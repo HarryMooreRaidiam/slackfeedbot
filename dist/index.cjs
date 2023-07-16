@@ -30284,7 +30284,8 @@ var run = async () => {
       showDesc,
       showLink,
       showDate,
-      titleFilter: titleFilterInclude
+      titleFilterInclude,
+      titleFilterExclude
     })}`);
     const { filtered, unfiltered, cached } = await getFeed(rssFeed, cacheDir, interval, titleFilterInclude, titleFilterExclude);
     if (filtered.length) {

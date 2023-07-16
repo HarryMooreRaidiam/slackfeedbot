@@ -37,7 +37,8 @@ const run = async () => {
         showDesc,
         showLink,
         showDate,
-        titleFilter: titleFilterInclude
+        titleFilterInclude,
+        titleFilterExclude
       })}`
     );
 
