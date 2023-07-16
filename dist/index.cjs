@@ -24689,7 +24689,7 @@ var getFeed = async (rssFeed, cacheDir, interval, title_filter_include, title_fi
   import_core2.default.debug(`Retrieving ${rssFeed}\u2026`);
   const rss = await (0, import_rss_to_json.parse)(rssFeed, {});
   import_core2.default.debug(`Feed has ${(_a = rss == null ? void 0 : rss.items) == null ? void 0 : _a.length} items`);
-  const filteredItems = filterFeed(rss.items ?? [], title_filter_include.split(",") ?? [], title_filter_exclude.split(",") ?? []);
+  const filteredItems = filterFeed(rss.items ?? [], title_filter_include, title_filter_exclude);
   const updatedRss = __spreadProps(__spreadValues({}, rss), {
     items: filteredItems
   });
@@ -24721,14 +24721,16 @@ var getFeed = async (rssFeed, cacheDir, interval, title_filter_include, title_fi
   }
 };
 var filterFeed = (filtered, title_filter_include, title_filter_exclude) => {
-  if (title_filter_include.length === 0 && title_filter_exclude.length === 0) {
+  const includeFilters = title_filter_include.split(",").map((filter) => filter.trim());
+  const excludeFilters = title_filter_exclude.split(",").map((filter) => filter.trim());
+  if (includeFilters.length === 0 && excludeFilters.length === 0) {
     return filtered;
   }
   return filtered.filter((item) => {
-    return (title_filter_include.length === 0 || title_filter_include.some((filter) => {
+    return (includeFilters.length === 0 || includeFilters.some((filter) => {
       var _a;
       return (_a = item.title) == null ? void 0 : _a.includes(filter);
-    })) && (title_filter_exclude.length === 0 || !title_filter_exclude.some((filter) => {
+    })) && (excludeFilters.length === 0 || !excludeFilters.some((filter) => {
       var _a;
       return (_a = item.title) == null ? void 0 : _a.includes(filter);
     }));
