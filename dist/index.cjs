@@ -24723,10 +24723,15 @@ var getFeed = async (rssFeed, cacheDir, interval, title_filter_include, title_fi
 var filterFeed = (filtered, title_filter_include, title_filter_exclude) => {
   const includeFilters = title_filter_include.split(",").map((filter) => filter.trim());
   const excludeFilters = title_filter_exclude.split(",").map((filter) => filter.trim());
+  import_core2.default.debug("RssFeedItem: " + JSON.stringify(filtered));
+  import_core2.default.debug(`Include filters: ${includeFilters} ${includeFilters.length}`);
+  import_core2.default.debug(`Exclude filters: ${excludeFilters} ${excludeFilters.length}`);
   if (includeFilters.length === 0 && excludeFilters.length === 0) {
+    import_core2.default.debug("No filters provided, returning all items");
     return filtered;
   }
   return filtered.filter((item) => {
+    import_core2.default.debug(`Checking item: ${item.title}`);
     return (includeFilters.length === 0 || includeFilters.some((filter) => {
       var _a;
       return (_a = item.title) == null ? void 0 : _a.includes(filter);
