@@ -22,7 +22,8 @@ const run = async () => {
     const showLink = core.getInput('show_link').length > 0 ? core.getBooleanInput('show_link') : true;
     const showDate = core.getInput('show_date').length > 0 ? core.getBooleanInput('show_date') : true;
     const showImg = core.getInput('show_img').length > 0 ? core.getBooleanInput('show_img') : true;
-    const titleFilter = core.getInput('title_filter');
+    const titleFilterInclude = core.getInput('title_filter_include');
+    const titleFilterExclude = core.getInput('title_filter_exclude');
 
     core.debug(
       `Processed inputs: ${JSON.stringify({
@@ -36,12 +37,12 @@ const run = async () => {
         showDesc,
         showLink,
         showDate,
-        titleFilter
+        titleFilter: titleFilterInclude
       })}`
     );
 
     // Get RSS feed items
-    const { filtered, unfiltered, cached } = await getFeed(rssFeed, cacheDir, interval, titleFilter);
+    const { filtered, unfiltered, cached } = await getFeed(rssFeed, cacheDir, interval, titleFilterInclude, titleFilterExclude);
 
     if (filtered.length) {
       // Generate payload

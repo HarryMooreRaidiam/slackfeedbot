@@ -46,7 +46,8 @@ Required fields denoted with `*`. Must specify `cache_dir` (which requires separ
 - `show_img`: Show the post image. Defaults to `true`.
 - `show_date`: Show the post date. Defaults to `true`.
 - `show_link`: Show the Read more link, linking back to the post. Defaults to `true`.
-- `title_filter`: If included, filters out RSS feed items unless their title includes one of these terms (comma separated).
+- `title_filter_include`: If included, filters out RSS feed items unless their title includes one of these terms (comma separated).
+- `title_filter_exclude`: If included, filters out RSS feed items if their title includes one of these terms (comma separated).
 
 ## Examples
 

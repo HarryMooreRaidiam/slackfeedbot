@@ -24684,12 +24684,12 @@ var writeCache = async (feedTitle, rssFeed, cacheDir, filtered, cached) => {
 var import_core2 = __toESM(require_core(), 1);
 var import_dayjs = __toESM(require_dayjs_min(), 1);
 var import_rss_to_json = __toESM(require_dist(), 1);
-var getFeed = async (rssFeed, cacheDir, interval, title_filter) => {
+var getFeed = async (rssFeed, cacheDir, interval, title_filter_include, title_filter_exclude) => {
   var _a, _b;
   import_core2.default.debug(`Retrieving ${rssFeed}\u2026`);
   var rss = await (0, import_rss_to_json.parse)(rssFeed, {});
   import_core2.default.debug(`Feed has ${(_a = rss == null ? void 0 : rss.items) == null ? void 0 : _a.length} items`);
-  rss.items = filterFeed(rss.items ?? [], title_filter.split(","));
+  rss.items = filterFeed(rss.items ?? [], title_filter_include.split(","), title_filter_exclude.split(","));
   if ((_b = rss == null ? void 0 : rss.items) == null ? void 0 : _b.length) {
     let toSend = [];
     let cached = [];
@@ -24717,15 +24717,18 @@ var getFeed = async (rssFeed, cacheDir, interval, title_filter) => {
     throw new Error("No feed items found");
   }
 };
-var filterFeed = (filtered, title_filter) => {
-  if (title_filter.length === 0) {
+var filterFeed = (filtered, title_filter_include, title_filter_exclude) => {
+  if (title_filter_include.length === 0 && title_filter_exclude.length === 0) {
     return filtered;
   }
   return filtered.filter((item) => {
-    return title_filter.some((filter) => {
+    return (title_filter_include.length === 0 || title_filter_include.some((filter) => {
       var _a;
       return (_a = item.title) == null ? void 0 : _a.includes(filter);
-    });
+    })) && (title_filter_exclude.length === 0 || !title_filter_exclude.some((filter) => {
+      var _a;
+      return (_a = item.title) == null ? void 0 : _a.includes(filter);
+    }));
   });
 };
 
@@ -30268,7 +30271,8 @@ var run = async () => {
     const showLink = import_core7.default.getInput("show_link").length > 0 ? import_core7.default.getBooleanInput("show_link") : true;
     const showDate = import_core7.default.getInput("show_date").length > 0 ? import_core7.default.getBooleanInput("show_date") : true;
     const showImg = import_core7.default.getInput("show_img").length > 0 ? import_core7.default.getBooleanInput("show_img") : true;
-    const titleFilter = import_core7.default.getInput("title_filter");
+    const titleFilterInclude = import_core7.default.getInput("title_filter_include");
+    const titleFilterExclude = import_core7.default.getInput("title_filter_exclude");
     import_core7.default.debug(`Processed inputs: ${JSON.stringify({
       slackWebhook,
       rssFeed,
@@ -30280,9 +30284,9 @@ var run = async () => {
       showDesc,
       showLink,
       showDate,
-      titleFilter
+      titleFilter: titleFilterInclude
     })}`);
-    const { filtered, unfiltered, cached } = await getFeed(rssFeed, cacheDir, interval, titleFilter);
+    const { filtered, unfiltered, cached } = await getFeed(rssFeed, cacheDir, interval, titleFilterInclude, titleFilterExclude);
     if (filtered.length) {
       const payload = await genPayload(filtered, unfiltered, rssFeed, feedName, feedImg, unfurl, showDesc, showImg, showDate, showLink);
       await slack(payload, slackWebhook);

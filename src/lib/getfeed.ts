@@ -9,14 +9,15 @@ const getFeed = async (
   rssFeed: string,
   cacheDir: string | undefined,
   interval: number | undefined,
-  title_filter: string
+  title_filter_include: string,
+  title_filter_exclude: string
 ): Promise<{ filtered: RssFeedItem[]; unfiltered: RssFeed; cached: string[] }> => {
   core.debug(`Retrieving ${rssFeed}…`);
 
   var rss: RssFeed = await parse(rssFeed, {});
   core.debug(`Feed has ${rss?.items?.length} items`);
 
-  rss.items = filterFeed(rss.items ?? [], title_filter.split(','));
+  rss.items = filterFeed(rss.items ?? [], title_filter_include.split(','), title_filter_exclude.split(','));
 
   if (rss?.items?.length) {
     let toSend: RssFeedItem[] = [];
@@ -54,14 +55,13 @@ const getFeed = async (
 export { getFeed };
 
 // Filters the feed items by title if a filter is provided
-const filterFeed = (filtered: RssFeedItem[], title_filter: string[]): RssFeedItem[] => {
-  if (title_filter.length === 0) {
+const filterFeed = (filtered: RssFeedItem[], title_filter_include: string[], title_filter_exclude: string[]): RssFeedItem[] => {
+  if (title_filter_include.length === 0 && title_filter_exclude.length === 0) {
     return filtered;
   }
-  
-  return filtered.filter(item => {
-    return title_filter.some(filter => {
-      return item.title?.includes(filter);
+
+  return filtered.filter(
+    item => { 
+      return (title_filter_include.length === 0 || title_filter_include.some(filter => item.title?.includes(filter))) && (title_filter_exclude.length === 0 || !title_filter_exclude.some(filter => item.title?.includes(filter))) 
     });
-  });
 };
