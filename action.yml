@@ -35,6 +35,9 @@ inputs:
   unfurl:
     description: 'Unfurl links'
     required: false
+  title_filter:
+    description: 'Filter RSS feed by title'
+    required: false
 runs:
   using: 'node16'
   main: 'dist/index.cjs'

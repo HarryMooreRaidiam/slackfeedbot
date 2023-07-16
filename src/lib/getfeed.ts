@@ -8,12 +8,15 @@ import { checkCache, readCache } from './cache';
 const getFeed = async (
   rssFeed: string,
   cacheDir: string | undefined,
-  interval: number | undefined
+  interval: number | undefined,
+  title_filter: string
 ): Promise<{ filtered: RssFeedItem[]; unfiltered: RssFeed; cached: string[] }> => {
   core.debug(`Retrieving ${rssFeed}…`);
 
-  const rss: RssFeed = await parse(rssFeed, {});
+  var rss: RssFeed = await parse(rssFeed, {});
   core.debug(`Feed has ${rss?.items?.length} items`);
+
+  rss.items = filterFeed(rss.items ?? [], title_filter.split(','));
 
   if (rss?.items?.length) {
     let toSend: RssFeedItem[] = [];
@@ -49,3 +52,16 @@ const getFeed = async (
 };
 
 export { getFeed };
+
+// Filters the feed items by title if a filter is provided
+const filterFeed = (filtered: RssFeedItem[], title_filter: string[]): RssFeedItem[] => {
+  if (title_filter.length === 0) {
+    return filtered;
+  }
+  
+  return filtered.filter(item => {
+    return title_filter.some(filter => {
+      return item.title?.includes(filter);
+    });
+  });
+};
