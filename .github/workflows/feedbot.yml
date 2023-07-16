@@ -1,7 +1,7 @@
 name: FeedBot
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '0 * * * *'
   workflow_dispatch:
 jobs:
   rss-to-slack:
@@ -19,55 +19,74 @@ jobs:
           path: ./slackfeedbot-cache
           key: feed-cache-i-${{ steps.generate-key.outputs.cache-key }}
           restore-keys: feed-cache-i-
-      - name: LAT
-        uses: 'selfagency/slackfeedbot@dev'
+      - name: Apple Releases
+        uses: 'HarryMooreRaidiam/slackfeedbot@main'
         with:
-          rss: 'https://www.latimes.com/rss2.0.xml'
+          rss: 'https://developer.apple.com/news/releases/rss/releases.rss'
+          slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
+          cache_dir: './slackfeedbot-cache'
+          title_filter_exclude: 'beta,iPadOS,tvOS'
+        continue-on-error: true
+      - name: Infosec News Actively Exploited
+        uses: 'HarryMooreRaidiam/slackfeedbot@main'
+        with:
+          rss: 'https://allinfosecnews.com/topic/actively-exploited/feed/'
           slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
           cache_dir: './slackfeedbot-cache'
         continue-on-error: true
-      - name: WaPo
-        uses: 'selfagency/slackfeedbot@dev'
+      - name: Infosec News Apple
+        uses: 'HarryMooreRaidiam/slackfeedbot@main'
         with:
-          rss: 'https://feeds.washingtonpost.com/rss/homepage'
-          feed_name: 'Washington Post'
-          feed_image: 'https://www.washingtonpost.com/wp-stat/assets/favicons/touch-icon-iphone.png'
+          rss: 'https://allinfosecnews.com/topic/apple/feed/'
           slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
           cache_dir: './slackfeedbot-cache'
         continue-on-error: true
-      - name: GitHub
-        uses: 'selfagency/slackfeedbot@dev'
+      - name: Infosec News AWS
+        uses: 'HarryMooreRaidiam/slackfeedbot@main'
         with:
-          rss: 'https://www.githubstatus.com/history.rss'
+          rss: 'https://allinfosecnews.com/topic/aws/feed/'
           slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
           cache_dir: './slackfeedbot-cache'
         continue-on-error: true
-      - name: Google Cloud
-        uses: 'selfagency/slackfeedbot@dev'
+      - name: Infosec News Infrastructure as Code
+        uses: 'HarryMooreRaidiam/slackfeedbot@main'
         with:
-          rss: 'https://status.cloud.google.com/en/feed.atom'
+          rss: 'https://allinfosecnews.com/topic/iac/feed/'
           slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
           cache_dir: './slackfeedbot-cache'
         continue-on-error: true
-      - name: Zoom
-        uses: 'selfagency/slackfeedbot@dev'
+      - name: Infosec News Azure AD
+        uses: 'HarryMooreRaidiam/slackfeedbot@main'
         with:
-          rss: 'https://status.zoom.us/history.rss'
+          rss: 'https://allinfosecnews.com/topic/azure-ad/feed/'
           slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
           cache_dir: './slackfeedbot-cache'
         continue-on-error: true
-      - name: Linear
-        uses: 'selfagency/slackfeedbot@dev'
+      - name: Infosec News MacOS
+        uses: 'HarryMooreRaidiam/slackfeedbot@main'
         with:
-          rss: 'https://linearstatus.com/history.rss'
+          rss: 'https://allinfosecnews.com/topic/macos/feed/'
           slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
           cache_dir: './slackfeedbot-cache'
         continue-on-error: true
-      - name: Stripe
-        uses: 'selfagency/slackfeedbot@dev'
+      - name: Infosec News Terraform
+        uses: 'HarryMooreRaidiam/slackfeedbot@main'
         with:
-          rss: 'https://status.stripe.com/current/atom.xml'
+          rss: 'https://allinfosecnews.com/topic/terraform/feed/'
           slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
           cache_dir: './slackfeedbot-cache'
         continue-on-error: true
-
+      - name: Infosec News API security
+        uses: 'HarryMooreRaidiam/slackfeedbot@main'
+        with:
+          rss: 'https://allinfosecnews.com/topic/api-security/feed/'
+          slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
+          cache_dir: './slackfeedbot-cache'
+        continue-on-error: true
+      - name: Infosec News Identity and Access Management
+        uses: 'HarryMooreRaidiam/slackfeedbot@main'
+        with:
+          rss: 'https://allinfosecnews.com/topic/iam/feed/'
+          slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
+          cache_dir: './slackfeedbot-cache'
+        continue-on-error: true
