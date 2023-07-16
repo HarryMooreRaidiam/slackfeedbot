@@ -19,6 +19,7 @@ const getFeed = async (
   core.debug(`Feed has ${rss?.items?.length} items`);
 
   const filteredItems = filterFeed(rss.items ?? [], title_filter_include, title_filter_exclude);
+  core.debug('Filtered items: ' + filteredItems.length);
 
   const updatedRss: RssFeed = {
     ...rss,
@@ -61,9 +62,9 @@ const getFeed = async (
 export { getFeed };
 
 // Filters the feed items by title if a filter is provided
-const filterFeed = (filtered: RssFeedItem[], title_filter_include: string, title_filter_exclude: string): RssFeedItem[] => {
-  const includeFilters = title_filter_include.split(",").map(filter => filter.trim());
-  const excludeFilters = title_filter_exclude.split(",").map(filter => filter.trim());
+const filterFeed = (filtered: RssFeedItem[], title_filter_include?: string, title_filter_exclude?: string): RssFeedItem[] => {
+  const includeFilters = (title_filter_include && title_filter_include !== "") ? title_filter_include.split(",").map(filter => filter.trim()) : [];
+  const excludeFilters = (title_filter_exclude && title_filter_exclude !== "") ? title_filter_exclude.split(",").map(filter => filter.trim()) : [];
   core.debug(`Include filters: ${includeFilters} ${includeFilters.length}`);
   core.debug(`Exclude filters: ${excludeFilters} ${excludeFilters.length}`);
 
@@ -74,7 +75,7 @@ const filterFeed = (filtered: RssFeedItem[], title_filter_include: string, title
 
   return filtered.filter(item => {
     core.debug(`Checking item: ${item.title}`);
-    return ((title_filter_include === "" || title_filter_include === undefined) || includeFilters.some(filter => item.title?.includes(filter))) &&
-           ((title_filter_exclude === "" || title_filter_exclude === undefined) || !excludeFilters.some(filter => item.title?.includes(filter)));
+    return (includeFilters.length === 0 || includeFilters.some(filter => item.title?.includes(filter))) &&
+           (excludeFilters.length === 0 || !excludeFilters.some(filter => item.title?.includes(filter)));
   });
 };
