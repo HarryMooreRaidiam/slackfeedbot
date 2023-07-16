@@ -24685,12 +24685,15 @@ var import_core2 = __toESM(require_core(), 1);
 var import_dayjs = __toESM(require_dayjs_min(), 1);
 var import_rss_to_json = __toESM(require_dist(), 1);
 var getFeed = async (rssFeed, cacheDir, interval, title_filter_include, title_filter_exclude) => {
-  var _a, _b;
+  var _a;
   import_core2.default.debug(`Retrieving ${rssFeed}\u2026`);
-  var rss = await (0, import_rss_to_json.parse)(rssFeed, {});
+  const rss = await (0, import_rss_to_json.parse)(rssFeed, {});
   import_core2.default.debug(`Feed has ${(_a = rss == null ? void 0 : rss.items) == null ? void 0 : _a.length} items`);
-  rss.items = filterFeed(rss.items ?? [], title_filter_include.split(","), title_filter_exclude.split(","));
-  if ((_b = rss == null ? void 0 : rss.items) == null ? void 0 : _b.length) {
+  const filteredItems = filterFeed(rss.items ?? [], title_filter_include.split(",") ?? [], title_filter_exclude.split(",") ?? []);
+  const updatedRss = __spreadProps(__spreadValues({}, rss), {
+    items: filteredItems
+  });
+  if (filteredItems.length) {
     let toSend = [];
     let cached = [];
     if (cacheDir) {
@@ -24702,13 +24705,13 @@ var getFeed = async (rssFeed, cacheDir, interval, title_filter_include, title_fi
         });
       } catch (err) {
         import_core2.default.debug(err.message);
-        toSend = rss.items.filter((item) => {
+        toSend = filteredItems.filter((item) => {
           return (0, import_dayjs.default)(item.created).isAfter((0, import_dayjs.default)().subtract(1, "hour"));
         });
       }
     } else if (interval) {
       import_core2.default.debug(`Selecting items posted in the last ${interval} minutes\u2026`);
-      toSend = rss.items.filter((item) => {
+      toSend = filteredItems.filter((item) => {
         return (0, import_dayjs.default)(item.created).isAfter((0, import_dayjs.default)().subtract(interval, "minute"));
       });
     }

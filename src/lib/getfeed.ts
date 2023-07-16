@@ -14,12 +14,17 @@ const getFeed = async (
 ): Promise<{ filtered: RssFeedItem[]; unfiltered: RssFeed; cached: string[] }> => {
   core.debug(`Retrieving ${rssFeed}…`);
 
-  var rss: RssFeed = await parse(rssFeed, {});
+  const rss: RssFeed = await parse(rssFeed, {});
   core.debug(`Feed has ${rss?.items?.length} items`);
 
-  rss.items = filterFeed(rss.items ?? [], title_filter_include.split(','), title_filter_exclude.split(','));
+  const filteredItems = filterFeed(rss.items ?? [], title_filter_include.split(',') ?? [], title_filter_exclude.split(',') ?? []);
 
-  if (rss?.items?.length) {
+  const updatedRss: RssFeed = {
+    ...rss,
+    items: filteredItems,
+  };
+
+  if (filteredItems.length) {
     let toSend: RssFeedItem[] = [];
     let cached: string[] = [];
 
@@ -34,14 +39,14 @@ const getFeed = async (
       } catch (err) {
         core.debug((<Error>err).message);
 
-        toSend = rss.items.filter(item => {
+        toSend = filteredItems.filter(item => {
           return dayjs(item.created).isAfter(dayjs().subtract(1, 'hour'));
         });
       }
     } else if (interval) {
       core.debug(`Selecting items posted in the last ${interval} minutes…`);
 
-      toSend = rss.items.filter(item => {
+      toSend = filteredItems.filter(item => {
         return dayjs(item.created).isAfter(dayjs().subtract(interval, 'minute'));
       });
     }
