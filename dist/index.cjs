@@ -24691,9 +24691,6 @@ var getFeed = async (rssFeed, cacheDir, interval, title_filter_include, title_fi
   import_core2.default.debug(`Feed has ${(_a = rss == null ? void 0 : rss.items) == null ? void 0 : _a.length} items`);
   const filteredItems = filterFeed(rss.items ?? [], title_filter_include, title_filter_exclude);
   import_core2.default.debug("Filtered items: " + filteredItems.length);
-  const updatedRss = __spreadProps(__spreadValues({}, rss), {
-    items: filteredItems
-  });
   if (filteredItems.length) {
     let toSend = [];
     let cached = [];
@@ -24726,7 +24723,7 @@ var filterFeed = (filtered, title_filter_include, title_filter_exclude) => {
   const excludeFilters = title_filter_exclude && title_filter_exclude !== "" ? title_filter_exclude.split(",").map((filter) => filter.trim()) : [];
   import_core2.default.debug(`Include filters: ${includeFilters} ${includeFilters.length}`);
   import_core2.default.debug(`Exclude filters: ${excludeFilters} ${excludeFilters.length}`);
-  if ((title_filter_include === "" || title_filter_include === void 0) && (title_filter_exclude === "" || title_filter_exclude === void 0)) {
+  if (includeFilters.length === 0 && excludeFilters.length === 0) {
     import_core2.default.debug("No filters provided, returning all items");
     return filtered;
   }

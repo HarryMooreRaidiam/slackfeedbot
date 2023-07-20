@@ -3,7 +3,6 @@ import dayjs from 'dayjs';
 import { parse } from 'rss-to-json';
 import { RssFeed, RssFeedItem } from '../types.d';
 import { checkCache, readCache } from './cache';
-import { connected } from 'process';
 
 // Gets the feed, checks the cache (or time since last run), and returns new items
 const getFeed = async (
@@ -20,11 +19,6 @@ const getFeed = async (
 
   const filteredItems = filterFeed(rss.items ?? [], title_filter_include, title_filter_exclude);
   core.debug('Filtered items: ' + filteredItems.length);
-
-  const updatedRss: RssFeed = {
-    ...rss,
-    items: filteredItems,
-  };
 
   if (filteredItems.length) {
     let toSend: RssFeedItem[] = [];
@@ -68,7 +62,7 @@ const filterFeed = (filtered: RssFeedItem[], title_filter_include?: string, titl
   core.debug(`Include filters: ${includeFilters} ${includeFilters.length}`);
   core.debug(`Exclude filters: ${excludeFilters} ${excludeFilters.length}`);
 
-  if ((title_filter_include === "" || title_filter_include === undefined) && (title_filter_exclude === "" || title_filter_exclude === undefined)) {
+  if (includeFilters.length === 0 && excludeFilters.length === 0) {
     core.debug('No filters provided, returning all items');
     return filtered;
   }
