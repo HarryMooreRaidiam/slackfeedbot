@@ -136,14 +136,14 @@ var require_command = __commonJS({
           let first = true;
           for (const key2 in this.properties) {
             if (this.properties.hasOwnProperty(key2)) {
-              const val = this.properties[key2];
-              if (val) {
+              const val2 = this.properties[key2];
+              if (val2) {
                 if (first) {
                   first = false;
                 } else {
                   cmdStr += ",";
                 }
-                cmdStr += `${key2}=${escapeProperty(val)}`;
+                cmdStr += `${key2}=${escapeProperty(val2)}`;
               }
             }
           }
@@ -157,6 +157,497 @@ var require_command = __commonJS({
     }
     function escapeProperty(s2) {
       return utils_1.toCommandValue(s2).replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A").replace(/:/g, "%3A").replace(/,/g, "%2C");
+    }
+  }
+});
+
+// node_modules/uuid/dist/rng.js
+var require_rng = __commonJS({
+  "node_modules/uuid/dist/rng.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    exports.default = rng;
+    var _crypto = _interopRequireDefault(require("crypto"));
+    function _interopRequireDefault(obj) {
+      return obj && obj.__esModule ? obj : { default: obj };
+    }
+    var rnds8Pool = new Uint8Array(256);
+    var poolPtr = rnds8Pool.length;
+    function rng() {
+      if (poolPtr > rnds8Pool.length - 16) {
+        _crypto.default.randomFillSync(rnds8Pool);
+        poolPtr = 0;
+      }
+      return rnds8Pool.slice(poolPtr, poolPtr += 16);
+    }
+  }
+});
+
+// node_modules/uuid/dist/regex.js
+var require_regex = __commonJS({
+  "node_modules/uuid/dist/regex.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    exports.default = void 0;
+    var _default = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000)$/i;
+    exports.default = _default;
+  }
+});
+
+// node_modules/uuid/dist/validate.js
+var require_validate = __commonJS({
+  "node_modules/uuid/dist/validate.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    exports.default = void 0;
+    var _regex = _interopRequireDefault(require_regex());
+    function _interopRequireDefault(obj) {
+      return obj && obj.__esModule ? obj : { default: obj };
+    }
+    function validate2(uuid) {
+      return typeof uuid === "string" && _regex.default.test(uuid);
+    }
+    var _default = validate2;
+    exports.default = _default;
+  }
+});
+
+// node_modules/uuid/dist/stringify.js
+var require_stringify = __commonJS({
+  "node_modules/uuid/dist/stringify.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    exports.default = void 0;
+    var _validate = _interopRequireDefault(require_validate());
+    function _interopRequireDefault(obj) {
+      return obj && obj.__esModule ? obj : { default: obj };
+    }
+    var byteToHex = [];
+    for (let i2 = 0; i2 < 256; ++i2) {
+      byteToHex.push((i2 + 256).toString(16).substr(1));
+    }
+    function stringify(arr, offset = 0) {
+      const uuid = (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
+      if (!(0, _validate.default)(uuid)) {
+        throw TypeError("Stringified UUID is invalid");
+      }
+      return uuid;
+    }
+    var _default = stringify;
+    exports.default = _default;
+  }
+});
+
+// node_modules/uuid/dist/v1.js
+var require_v1 = __commonJS({
+  "node_modules/uuid/dist/v1.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    exports.default = void 0;
+    var _rng = _interopRequireDefault(require_rng());
+    var _stringify = _interopRequireDefault(require_stringify());
+    function _interopRequireDefault(obj) {
+      return obj && obj.__esModule ? obj : { default: obj };
+    }
+    var _nodeId;
+    var _clockseq;
+    var _lastMSecs = 0;
+    var _lastNSecs = 0;
+    function v1(options, buf, offset) {
+      let i2 = buf && offset || 0;
+      const b = buf || new Array(16);
+      options = options || {};
+      let node = options.node || _nodeId;
+      let clockseq = options.clockseq !== void 0 ? options.clockseq : _clockseq;
+      if (node == null || clockseq == null) {
+        const seedBytes = options.random || (options.rng || _rng.default)();
+        if (node == null) {
+          node = _nodeId = [seedBytes[0] | 1, seedBytes[1], seedBytes[2], seedBytes[3], seedBytes[4], seedBytes[5]];
+        }
+        if (clockseq == null) {
+          clockseq = _clockseq = (seedBytes[6] << 8 | seedBytes[7]) & 16383;
+        }
+      }
+      let msecs = options.msecs !== void 0 ? options.msecs : Date.now();
+      let nsecs = options.nsecs !== void 0 ? options.nsecs : _lastNSecs + 1;
+      const dt = msecs - _lastMSecs + (nsecs - _lastNSecs) / 1e4;
+      if (dt < 0 && options.clockseq === void 0) {
+        clockseq = clockseq + 1 & 16383;
+      }
+      if ((dt < 0 || msecs > _lastMSecs) && options.nsecs === void 0) {
+        nsecs = 0;
+      }
+      if (nsecs >= 1e4) {
+        throw new Error("uuid.v1(): Can't create more than 10M uuids/sec");
+      }
+      _lastMSecs = msecs;
+      _lastNSecs = nsecs;
+      _clockseq = clockseq;
+      msecs += 122192928e5;
+      const tl = ((msecs & 268435455) * 1e4 + nsecs) % 4294967296;
+      b[i2++] = tl >>> 24 & 255;
+      b[i2++] = tl >>> 16 & 255;
+      b[i2++] = tl >>> 8 & 255;
+      b[i2++] = tl & 255;
+      const tmh = msecs / 4294967296 * 1e4 & 268435455;
+      b[i2++] = tmh >>> 8 & 255;
+      b[i2++] = tmh & 255;
+      b[i2++] = tmh >>> 24 & 15 | 16;
+      b[i2++] = tmh >>> 16 & 255;
+      b[i2++] = clockseq >>> 8 | 128;
+      b[i2++] = clockseq & 255;
+      for (let n = 0; n < 6; ++n) {
+        b[i2 + n] = node[n];
+      }
+      return buf || (0, _stringify.default)(b);
+    }
+    var _default = v1;
+    exports.default = _default;
+  }
+});
+
+// node_modules/uuid/dist/parse.js
+var require_parse = __commonJS({
+  "node_modules/uuid/dist/parse.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    exports.default = void 0;
+    var _validate = _interopRequireDefault(require_validate());
+    function _interopRequireDefault(obj) {
+      return obj && obj.__esModule ? obj : { default: obj };
+    }
+    function parse4(uuid) {
+      if (!(0, _validate.default)(uuid)) {
+        throw TypeError("Invalid UUID");
+      }
+      let v;
+      const arr = new Uint8Array(16);
+      arr[0] = (v = parseInt(uuid.slice(0, 8), 16)) >>> 24;
+      arr[1] = v >>> 16 & 255;
+      arr[2] = v >>> 8 & 255;
+      arr[3] = v & 255;
+      arr[4] = (v = parseInt(uuid.slice(9, 13), 16)) >>> 8;
+      arr[5] = v & 255;
+      arr[6] = (v = parseInt(uuid.slice(14, 18), 16)) >>> 8;
+      arr[7] = v & 255;
+      arr[8] = (v = parseInt(uuid.slice(19, 23), 16)) >>> 8;
+      arr[9] = v & 255;
+      arr[10] = (v = parseInt(uuid.slice(24, 36), 16)) / 1099511627776 & 255;
+      arr[11] = v / 4294967296 & 255;
+      arr[12] = v >>> 24 & 255;
+      arr[13] = v >>> 16 & 255;
+      arr[14] = v >>> 8 & 255;
+      arr[15] = v & 255;
+      return arr;
+    }
+    var _default = parse4;
+    exports.default = _default;
+  }
+});
+
+// node_modules/uuid/dist/v35.js
+var require_v35 = __commonJS({
+  "node_modules/uuid/dist/v35.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    exports.default = _default;
+    exports.URL = exports.DNS = void 0;
+    var _stringify = _interopRequireDefault(require_stringify());
+    var _parse = _interopRequireDefault(require_parse());
+    function _interopRequireDefault(obj) {
+      return obj && obj.__esModule ? obj : { default: obj };
+    }
+    function stringToBytes(str) {
+      str = unescape(encodeURIComponent(str));
+      const bytes = [];
+      for (let i2 = 0; i2 < str.length; ++i2) {
+        bytes.push(str.charCodeAt(i2));
+      }
+      return bytes;
+    }
+    var DNS = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+    exports.DNS = DNS;
+    var URL2 = "6ba7b811-9dad-11d1-80b4-00c04fd430c8";
+    exports.URL = URL2;
+    function _default(name, version, hashfunc) {
+      function generateUUID(value, namespace, buf, offset) {
+        if (typeof value === "string") {
+          value = stringToBytes(value);
+        }
+        if (typeof namespace === "string") {
+          namespace = (0, _parse.default)(namespace);
+        }
+        if (namespace.length !== 16) {
+          throw TypeError("Namespace must be array-like (16 iterable integer values, 0-255)");
+        }
+        let bytes = new Uint8Array(16 + value.length);
+        bytes.set(namespace);
+        bytes.set(value, namespace.length);
+        bytes = hashfunc(bytes);
+        bytes[6] = bytes[6] & 15 | version;
+        bytes[8] = bytes[8] & 63 | 128;
+        if (buf) {
+          offset = offset || 0;
+          for (let i2 = 0; i2 < 16; ++i2) {
+            buf[offset + i2] = bytes[i2];
+          }
+          return buf;
+        }
+        return (0, _stringify.default)(bytes);
+      }
+      try {
+        generateUUID.name = name;
+      } catch (err) {
+      }
+      generateUUID.DNS = DNS;
+      generateUUID.URL = URL2;
+      return generateUUID;
+    }
+  }
+});
+
+// node_modules/uuid/dist/md5.js
+var require_md5 = __commonJS({
+  "node_modules/uuid/dist/md5.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    exports.default = void 0;
+    var _crypto = _interopRequireDefault(require("crypto"));
+    function _interopRequireDefault(obj) {
+      return obj && obj.__esModule ? obj : { default: obj };
+    }
+    function md5(bytes) {
+      if (Array.isArray(bytes)) {
+        bytes = Buffer.from(bytes);
+      } else if (typeof bytes === "string") {
+        bytes = Buffer.from(bytes, "utf8");
+      }
+      return _crypto.default.createHash("md5").update(bytes).digest();
+    }
+    var _default = md5;
+    exports.default = _default;
+  }
+});
+
+// node_modules/uuid/dist/v3.js
+var require_v3 = __commonJS({
+  "node_modules/uuid/dist/v3.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    exports.default = void 0;
+    var _v = _interopRequireDefault(require_v35());
+    var _md = _interopRequireDefault(require_md5());
+    function _interopRequireDefault(obj) {
+      return obj && obj.__esModule ? obj : { default: obj };
+    }
+    var v3 = (0, _v.default)("v3", 48, _md.default);
+    var _default = v3;
+    exports.default = _default;
+  }
+});
+
+// node_modules/uuid/dist/v4.js
+var require_v4 = __commonJS({
+  "node_modules/uuid/dist/v4.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    exports.default = void 0;
+    var _rng = _interopRequireDefault(require_rng());
+    var _stringify = _interopRequireDefault(require_stringify());
+    function _interopRequireDefault(obj) {
+      return obj && obj.__esModule ? obj : { default: obj };
+    }
+    function v4(options, buf, offset) {
+      options = options || {};
+      const rnds = options.random || (options.rng || _rng.default)();
+      rnds[6] = rnds[6] & 15 | 64;
+      rnds[8] = rnds[8] & 63 | 128;
+      if (buf) {
+        offset = offset || 0;
+        for (let i2 = 0; i2 < 16; ++i2) {
+          buf[offset + i2] = rnds[i2];
+        }
+        return buf;
+      }
+      return (0, _stringify.default)(rnds);
+    }
+    var _default = v4;
+    exports.default = _default;
+  }
+});
+
+// node_modules/uuid/dist/sha1.js
+var require_sha1 = __commonJS({
+  "node_modules/uuid/dist/sha1.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    exports.default = void 0;
+    var _crypto = _interopRequireDefault(require("crypto"));
+    function _interopRequireDefault(obj) {
+      return obj && obj.__esModule ? obj : { default: obj };
+    }
+    function sha1(bytes) {
+      if (Array.isArray(bytes)) {
+        bytes = Buffer.from(bytes);
+      } else if (typeof bytes === "string") {
+        bytes = Buffer.from(bytes, "utf8");
+      }
+      return _crypto.default.createHash("sha1").update(bytes).digest();
+    }
+    var _default = sha1;
+    exports.default = _default;
+  }
+});
+
+// node_modules/uuid/dist/v5.js
+var require_v5 = __commonJS({
+  "node_modules/uuid/dist/v5.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    exports.default = void 0;
+    var _v = _interopRequireDefault(require_v35());
+    var _sha = _interopRequireDefault(require_sha1());
+    function _interopRequireDefault(obj) {
+      return obj && obj.__esModule ? obj : { default: obj };
+    }
+    var v5 = (0, _v.default)("v5", 80, _sha.default);
+    var _default = v5;
+    exports.default = _default;
+  }
+});
+
+// node_modules/uuid/dist/nil.js
+var require_nil = __commonJS({
+  "node_modules/uuid/dist/nil.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    exports.default = void 0;
+    var _default = "00000000-0000-0000-0000-000000000000";
+    exports.default = _default;
+  }
+});
+
+// node_modules/uuid/dist/version.js
+var require_version = __commonJS({
+  "node_modules/uuid/dist/version.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    exports.default = void 0;
+    var _validate = _interopRequireDefault(require_validate());
+    function _interopRequireDefault(obj) {
+      return obj && obj.__esModule ? obj : { default: obj };
+    }
+    function version(uuid) {
+      if (!(0, _validate.default)(uuid)) {
+        throw TypeError("Invalid UUID");
+      }
+      return parseInt(uuid.substr(14, 1), 16);
+    }
+    var _default = version;
+    exports.default = _default;
+  }
+});
+
+// node_modules/uuid/dist/index.js
+var require_dist = __commonJS({
+  "node_modules/uuid/dist/index.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+    Object.defineProperty(exports, "v1", {
+      enumerable: true,
+      get: function() {
+        return _v.default;
+      }
+    });
+    Object.defineProperty(exports, "v3", {
+      enumerable: true,
+      get: function() {
+        return _v2.default;
+      }
+    });
+    Object.defineProperty(exports, "v4", {
+      enumerable: true,
+      get: function() {
+        return _v3.default;
+      }
+    });
+    Object.defineProperty(exports, "v5", {
+      enumerable: true,
+      get: function() {
+        return _v4.default;
+      }
+    });
+    Object.defineProperty(exports, "NIL", {
+      enumerable: true,
+      get: function() {
+        return _nil.default;
+      }
+    });
+    Object.defineProperty(exports, "version", {
+      enumerable: true,
+      get: function() {
+        return _version.default;
+      }
+    });
+    Object.defineProperty(exports, "validate", {
+      enumerable: true,
+      get: function() {
+        return _validate.default;
+      }
+    });
+    Object.defineProperty(exports, "stringify", {
+      enumerable: true,
+      get: function() {
+        return _stringify.default;
+      }
+    });
+    Object.defineProperty(exports, "parse", {
+      enumerable: true,
+      get: function() {
+        return _parse.default;
+      }
+    });
+    var _v = _interopRequireDefault(require_v1());
+    var _v2 = _interopRequireDefault(require_v3());
+    var _v3 = _interopRequireDefault(require_v4());
+    var _v4 = _interopRequireDefault(require_v5());
+    var _nil = _interopRequireDefault(require_nil());
+    var _version = _interopRequireDefault(require_version());
+    var _validate = _interopRequireDefault(require_validate());
+    var _stringify = _interopRequireDefault(require_stringify());
+    var _parse = _interopRequireDefault(require_parse());
+    function _interopRequireDefault(obj) {
+      return obj && obj.__esModule ? obj : { default: obj };
     }
   }
 });
@@ -194,11 +685,12 @@ var require_file_command = __commonJS({
       return result;
     };
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.issueCommand = void 0;
+    exports.prepareKeyValueMessage = exports.issueFileCommand = void 0;
     var fs3 = __importStar(require("fs"));
     var os2 = __importStar(require("os"));
+    var uuid_1 = require_dist();
     var utils_1 = require_utils();
-    function issueCommand(command, message) {
+    function issueFileCommand(command, message) {
       const filePath = process.env[`GITHUB_${command}`];
       if (!filePath) {
         throw new Error(`Unable to find environment variable for file command ${command}`);
@@ -210,38 +702,56 @@ var require_file_command = __commonJS({
         encoding: "utf8"
       });
     }
-    exports.issueCommand = issueCommand;
+    exports.issueFileCommand = issueFileCommand;
+    function prepareKeyValueMessage(key2, value) {
+      const delimiter = `ghadelimiter_${uuid_1.v4()}`;
+      const convertedValue = utils_1.toCommandValue(value);
+      if (key2.includes(delimiter)) {
+        throw new Error(`Unexpected input: name should not contain the delimiter "${delimiter}"`);
+      }
+      if (convertedValue.includes(delimiter)) {
+        throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
+      }
+      return `${key2}<<${delimiter}${os2.EOL}${convertedValue}${os2.EOL}${delimiter}`;
+    }
+    exports.prepareKeyValueMessage = prepareKeyValueMessage;
   }
 });
 
-// node_modules/@actions/http-client/proxy.js
+// node_modules/@actions/http-client/lib/proxy.js
 var require_proxy = __commonJS({
-  "node_modules/@actions/http-client/proxy.js"(exports) {
+  "node_modules/@actions/http-client/lib/proxy.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    exports.checkBypass = exports.getProxyUrl = void 0;
     function getProxyUrl(reqUrl) {
-      let usingSsl = reqUrl.protocol === "https:";
-      let proxyUrl;
+      const usingSsl = reqUrl.protocol === "https:";
       if (checkBypass(reqUrl)) {
-        return proxyUrl;
+        return void 0;
       }
-      let proxyVar;
-      if (usingSsl) {
-        proxyVar = process.env["https_proxy"] || process.env["HTTPS_PROXY"];
-      } else {
-        proxyVar = process.env["http_proxy"] || process.env["HTTP_PROXY"];
-      }
+      const proxyVar = (() => {
+        if (usingSsl) {
+          return process.env["https_proxy"] || process.env["HTTPS_PROXY"];
+        } else {
+          return process.env["http_proxy"] || process.env["HTTP_PROXY"];
+        }
+      })();
       if (proxyVar) {
-        proxyUrl = new URL(proxyVar);
+        return new URL(proxyVar);
+      } else {
+        return void 0;
       }
-      return proxyUrl;
     }
     exports.getProxyUrl = getProxyUrl;
     function checkBypass(reqUrl) {
       if (!reqUrl.hostname) {
         return false;
       }
-      let noProxy = process.env["no_proxy"] || process.env["NO_PROXY"] || "";
+      const reqHost = reqUrl.hostname;
+      if (isLoopbackAddress(reqHost)) {
+        return true;
+      }
+      const noProxy = process.env["no_proxy"] || process.env["NO_PROXY"] || "";
       if (!noProxy) {
         return false;
       }
@@ -253,18 +763,22 @@ var require_proxy = __commonJS({
       } else if (reqUrl.protocol === "https:") {
         reqPort = 443;
       }
-      let upperReqHosts = [reqUrl.hostname.toUpperCase()];
+      const upperReqHosts = [reqUrl.hostname.toUpperCase()];
       if (typeof reqPort === "number") {
         upperReqHosts.push(`${upperReqHosts[0]}:${reqPort}`);
       }
-      for (let upperNoProxyItem of noProxy.split(",").map((x2) => x2.trim().toUpperCase()).filter((x2) => x2)) {
-        if (upperReqHosts.some((x2) => x2 === upperNoProxyItem)) {
+      for (const upperNoProxyItem of noProxy.split(",").map((x2) => x2.trim().toUpperCase()).filter((x2) => x2)) {
+        if (upperNoProxyItem === "*" || upperReqHosts.some((x2) => x2 === upperNoProxyItem || x2.endsWith(`.${upperNoProxyItem}`) || upperNoProxyItem.startsWith(".") && x2.endsWith(`${upperNoProxyItem}`))) {
           return true;
         }
       }
       return false;
     }
     exports.checkBypass = checkBypass;
+    function isLoopbackAddress(host) {
+      const hostLower = host.toLowerCase();
+      return hostLower === "localhost" || hostLower.startsWith("127.") || hostLower.startsWith("[::1]") || hostLower.startsWith("[0:0:0:0:0:0:0:1]");
+    }
   }
 });
 
@@ -498,15 +1012,71 @@ var require_tunnel2 = __commonJS({
   }
 });
 
-// node_modules/@actions/http-client/index.js
-var require_http_client = __commonJS({
-  "node_modules/@actions/http-client/index.js"(exports) {
+// node_modules/@actions/http-client/lib/index.js
+var require_lib = __commonJS({
+  "node_modules/@actions/http-client/lib/index.js"(exports) {
     "use strict";
+    var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m2, k, k2) {
+      if (k2 === void 0)
+        k2 = k;
+      Object.defineProperty(o, k2, { enumerable: true, get: function() {
+        return m2[k];
+      } });
+    } : function(o, m2, k, k2) {
+      if (k2 === void 0)
+        k2 = k;
+      o[k2] = m2[k];
+    });
+    var __setModuleDefault = exports && exports.__setModuleDefault || (Object.create ? function(o, v) {
+      Object.defineProperty(o, "default", { enumerable: true, value: v });
+    } : function(o, v) {
+      o["default"] = v;
+    });
+    var __importStar = exports && exports.__importStar || function(mod) {
+      if (mod && mod.__esModule)
+        return mod;
+      var result = {};
+      if (mod != null) {
+        for (var k in mod)
+          if (k !== "default" && Object.hasOwnProperty.call(mod, k))
+            __createBinding(result, mod, k);
+      }
+      __setModuleDefault(result, mod);
+      return result;
+    };
+    var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
+      function adopt(value) {
+        return value instanceof P ? value : new P(function(resolve) {
+          resolve(value);
+        });
+      }
+      return new (P || (P = Promise))(function(resolve, reject) {
+        function fulfilled(value) {
+          try {
+            step(generator.next(value));
+          } catch (e2) {
+            reject(e2);
+          }
+        }
+        function rejected(value) {
+          try {
+            step(generator["throw"](value));
+          } catch (e2) {
+            reject(e2);
+          }
+        }
+        function step(result) {
+          result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+        }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+      });
+    };
     Object.defineProperty(exports, "__esModule", { value: true });
-    var http3 = require("http");
-    var https2 = require("https");
-    var pm = require_proxy();
-    var tunnel;
+    exports.HttpClient = exports.isHttps = exports.HttpClientResponse = exports.HttpClientError = exports.getProxyUrl = exports.MediaTypes = exports.Headers = exports.HttpCodes = void 0;
+    var http3 = __importStar(require("http"));
+    var https2 = __importStar(require("https"));
+    var pm = __importStar(require_proxy());
+    var tunnel = __importStar(require_tunnel2());
     var HttpCodes;
     (function(HttpCodes2) {
       HttpCodes2[HttpCodes2["OK"] = 200] = "OK";
@@ -547,7 +1117,7 @@ var require_http_client = __commonJS({
       MediaTypes2["ApplicationJson"] = "application/json";
     })(MediaTypes = exports.MediaTypes || (exports.MediaTypes = {}));
     function getProxyUrl(serverUrl) {
-      let proxyUrl = pm.getProxyUrl(new URL(serverUrl));
+      const proxyUrl = pm.getProxyUrl(new URL(serverUrl));
       return proxyUrl ? proxyUrl.href : "";
     }
     exports.getProxyUrl = getProxyUrl;
@@ -580,20 +1150,22 @@ var require_http_client = __commonJS({
         this.message = message;
       }
       readBody() {
-        return new Promise(async (resolve, reject) => {
-          let output = Buffer.alloc(0);
-          this.message.on("data", (chunk) => {
-            output = Buffer.concat([output, chunk]);
-          });
-          this.message.on("end", () => {
-            resolve(output.toString());
-          });
+        return __awaiter(this, void 0, void 0, function* () {
+          return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+            let output = Buffer.alloc(0);
+            this.message.on("data", (chunk) => {
+              output = Buffer.concat([output, chunk]);
+            });
+            this.message.on("end", () => {
+              resolve(output.toString());
+            });
+          }));
         });
       }
     };
     exports.HttpClientResponse = HttpClientResponse;
     function isHttps(requestUrl) {
-      let parsedUrl = new URL(requestUrl);
+      const parsedUrl = new URL(requestUrl);
       return parsedUrl.protocol === "https:";
     }
     exports.isHttps = isHttps;
@@ -636,112 +1208,138 @@ var require_http_client = __commonJS({
         }
       }
       options(requestUrl, additionalHeaders) {
-        return this.request("OPTIONS", requestUrl, null, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+          return this.request("OPTIONS", requestUrl, null, additionalHeaders || {});
+        });
       }
       get(requestUrl, additionalHeaders) {
-        return this.request("GET", requestUrl, null, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+          return this.request("GET", requestUrl, null, additionalHeaders || {});
+        });
       }
       del(requestUrl, additionalHeaders) {
-        return this.request("DELETE", requestUrl, null, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+          return this.request("DELETE", requestUrl, null, additionalHeaders || {});
+        });
       }
       post(requestUrl, data, additionalHeaders) {
-        return this.request("POST", requestUrl, data, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+          return this.request("POST", requestUrl, data, additionalHeaders || {});
+        });
       }
       patch(requestUrl, data, additionalHeaders) {
-        return this.request("PATCH", requestUrl, data, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+          return this.request("PATCH", requestUrl, data, additionalHeaders || {});
+        });
       }
       put(requestUrl, data, additionalHeaders) {
-        return this.request("PUT", requestUrl, data, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+          return this.request("PUT", requestUrl, data, additionalHeaders || {});
+        });
       }
       head(requestUrl, additionalHeaders) {
-        return this.request("HEAD", requestUrl, null, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+          return this.request("HEAD", requestUrl, null, additionalHeaders || {});
+        });
       }
       sendStream(verb, requestUrl, stream, additionalHeaders) {
-        return this.request(verb, requestUrl, stream, additionalHeaders);
+        return __awaiter(this, void 0, void 0, function* () {
+          return this.request(verb, requestUrl, stream, additionalHeaders);
+        });
       }
-      async getJson(requestUrl, additionalHeaders = {}) {
-        additionalHeaders[Headers2.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.Accept, MediaTypes.ApplicationJson);
-        let res = await this.get(requestUrl, additionalHeaders);
-        return this._processResponse(res, this.requestOptions);
+      getJson(requestUrl, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+          additionalHeaders[Headers2.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.Accept, MediaTypes.ApplicationJson);
+          const res = yield this.get(requestUrl, additionalHeaders);
+          return this._processResponse(res, this.requestOptions);
+        });
       }
-      async postJson(requestUrl, obj, additionalHeaders = {}) {
-        let data = JSON.stringify(obj, null, 2);
-        additionalHeaders[Headers2.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.Accept, MediaTypes.ApplicationJson);
-        additionalHeaders[Headers2.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.ContentType, MediaTypes.ApplicationJson);
-        let res = await this.post(requestUrl, data, additionalHeaders);
-        return this._processResponse(res, this.requestOptions);
+      postJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+          const data = JSON.stringify(obj, null, 2);
+          additionalHeaders[Headers2.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.Accept, MediaTypes.ApplicationJson);
+          additionalHeaders[Headers2.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.ContentType, MediaTypes.ApplicationJson);
+          const res = yield this.post(requestUrl, data, additionalHeaders);
+          return this._processResponse(res, this.requestOptions);
+        });
       }
-      async putJson(requestUrl, obj, additionalHeaders = {}) {
-        let data = JSON.stringify(obj, null, 2);
-        additionalHeaders[Headers2.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.Accept, MediaTypes.ApplicationJson);
-        additionalHeaders[Headers2.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.ContentType, MediaTypes.ApplicationJson);
-        let res = await this.put(requestUrl, data, additionalHeaders);
-        return this._processResponse(res, this.requestOptions);
+      putJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+          const data = JSON.stringify(obj, null, 2);
+          additionalHeaders[Headers2.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.Accept, MediaTypes.ApplicationJson);
+          additionalHeaders[Headers2.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.ContentType, MediaTypes.ApplicationJson);
+          const res = yield this.put(requestUrl, data, additionalHeaders);
+          return this._processResponse(res, this.requestOptions);
+        });
       }
-      async patchJson(requestUrl, obj, additionalHeaders = {}) {
-        let data = JSON.stringify(obj, null, 2);
-        additionalHeaders[Headers2.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.Accept, MediaTypes.ApplicationJson);
-        additionalHeaders[Headers2.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.ContentType, MediaTypes.ApplicationJson);
-        let res = await this.patch(requestUrl, data, additionalHeaders);
-        return this._processResponse(res, this.requestOptions);
+      patchJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+          const data = JSON.stringify(obj, null, 2);
+          additionalHeaders[Headers2.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.Accept, MediaTypes.ApplicationJson);
+          additionalHeaders[Headers2.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.ContentType, MediaTypes.ApplicationJson);
+          const res = yield this.patch(requestUrl, data, additionalHeaders);
+          return this._processResponse(res, this.requestOptions);
+        });
       }
-      async request(verb, requestUrl, data, headers) {
-        if (this._disposed) {
-          throw new Error("Client has already been disposed.");
-        }
-        let parsedUrl = new URL(requestUrl);
-        let info = this._prepareRequest(verb, parsedUrl, headers);
-        let maxTries = this._allowRetries && RetryableHttpVerbs.indexOf(verb) != -1 ? this._maxRetries + 1 : 1;
-        let numTries = 0;
-        let response;
-        while (numTries < maxTries) {
-          response = await this.requestRaw(info, data);
-          if (response && response.message && response.message.statusCode === HttpCodes.Unauthorized) {
-            let authenticationHandler;
-            for (let i2 = 0; i2 < this.handlers.length; i2++) {
-              if (this.handlers[i2].canHandleAuthentication(response)) {
-                authenticationHandler = this.handlers[i2];
-                break;
-              }
-            }
-            if (authenticationHandler) {
-              return authenticationHandler.handleAuthentication(this, info, data);
-            } else {
-              return response;
-            }
+      request(verb, requestUrl, data, headers) {
+        return __awaiter(this, void 0, void 0, function* () {
+          if (this._disposed) {
+            throw new Error("Client has already been disposed.");
           }
-          let redirectsRemaining = this._maxRedirects;
-          while (HttpRedirectCodes.indexOf(response.message.statusCode) != -1 && this._allowRedirects && redirectsRemaining > 0) {
-            const redirectUrl = response.message.headers["location"];
-            if (!redirectUrl) {
-              break;
-            }
-            let parsedRedirectUrl = new URL(redirectUrl);
-            if (parsedUrl.protocol == "https:" && parsedUrl.protocol != parsedRedirectUrl.protocol && !this._allowRedirectDowngrade) {
-              throw new Error("Redirect from HTTPS to HTTP protocol. This downgrade is not allowed for security reasons. If you want to allow this behavior, set the allowRedirectDowngrade option to true.");
-            }
-            await response.readBody();
-            if (parsedRedirectUrl.hostname !== parsedUrl.hostname) {
-              for (let header in headers) {
-                if (header.toLowerCase() === "authorization") {
-                  delete headers[header];
+          const parsedUrl = new URL(requestUrl);
+          let info = this._prepareRequest(verb, parsedUrl, headers);
+          const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb) ? this._maxRetries + 1 : 1;
+          let numTries = 0;
+          let response;
+          do {
+            response = yield this.requestRaw(info, data);
+            if (response && response.message && response.message.statusCode === HttpCodes.Unauthorized) {
+              let authenticationHandler;
+              for (const handler4 of this.handlers) {
+                if (handler4.canHandleAuthentication(response)) {
+                  authenticationHandler = handler4;
+                  break;
                 }
               }
+              if (authenticationHandler) {
+                return authenticationHandler.handleAuthentication(this, info, data);
+              } else {
+                return response;
+              }
             }
-            info = this._prepareRequest(verb, parsedRedirectUrl, headers);
-            response = await this.requestRaw(info, data);
-            redirectsRemaining--;
-          }
-          if (HttpResponseRetryCodes.indexOf(response.message.statusCode) == -1) {
-            return response;
-          }
-          numTries += 1;
-          if (numTries < maxTries) {
-            await response.readBody();
-            await this._performExponentialBackoff(numTries);
-          }
-        }
-        return response;
+            let redirectsRemaining = this._maxRedirects;
+            while (response.message.statusCode && HttpRedirectCodes.includes(response.message.statusCode) && this._allowRedirects && redirectsRemaining > 0) {
+              const redirectUrl = response.message.headers["location"];
+              if (!redirectUrl) {
+                break;
+              }
+              const parsedRedirectUrl = new URL(redirectUrl);
+              if (parsedUrl.protocol === "https:" && parsedUrl.protocol !== parsedRedirectUrl.protocol && !this._allowRedirectDowngrade) {
+                throw new Error("Redirect from HTTPS to HTTP protocol. This downgrade is not allowed for security reasons. If you want to allow this behavior, set the allowRedirectDowngrade option to true.");
+              }
+              yield response.readBody();
+              if (parsedRedirectUrl.hostname !== parsedUrl.hostname) {
+                for (const header in headers) {
+                  if (header.toLowerCase() === "authorization") {
+                    delete headers[header];
+                  }
+                }
+              }
+              info = this._prepareRequest(verb, parsedRedirectUrl, headers);
+              response = yield this.requestRaw(info, data);
+              redirectsRemaining--;
+            }
+            if (!response.message.statusCode || !HttpResponseRetryCodes.includes(response.message.statusCode)) {
+              return response;
+            }
+            numTries += 1;
+            if (numTries < maxTries) {
+              yield response.readBody();
+              yield this._performExponentialBackoff(numTries);
+            }
+          } while (numTries < maxTries);
+          return response;
+        });
       }
       dispose() {
         if (this._agent) {
@@ -750,32 +1348,40 @@ var require_http_client = __commonJS({
         this._disposed = true;
       }
       requestRaw(info, data) {
-        return new Promise((resolve, reject) => {
-          let callbackForResult = function(err, res) {
-            if (err) {
-              reject(err);
+        return __awaiter(this, void 0, void 0, function* () {
+          return new Promise((resolve, reject) => {
+            function callbackForResult(err, res) {
+              if (err) {
+                reject(err);
+              } else if (!res) {
+                reject(new Error("Unknown error"));
+              } else {
+                resolve(res);
+              }
             }
-            resolve(res);
-          };
-          this.requestRawWithCallback(info, data, callbackForResult);
+            this.requestRawWithCallback(info, data, callbackForResult);
+          });
         });
       }
       requestRawWithCallback(info, data, onResult) {
-        let socket;
         if (typeof data === "string") {
+          if (!info.options.headers) {
+            info.options.headers = {};
+          }
           info.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
         }
         let callbackCalled = false;
-        let handleResult = (err, res) => {
+        function handleResult(err, res) {
           if (!callbackCalled) {
             callbackCalled = true;
             onResult(err, res);
           }
-        };
-        let req = info.httpModule.request(info.options, (msg) => {
-          let res = new HttpClientResponse(msg);
-          handleResult(null, res);
+        }
+        const req = info.httpModule.request(info.options, (msg) => {
+          const res = new HttpClientResponse(msg);
+          handleResult(void 0, res);
         });
+        let socket;
         req.on("socket", (sock) => {
           socket = sock;
         });
@@ -783,10 +1389,10 @@ var require_http_client = __commonJS({
           if (socket) {
             socket.end();
           }
-          handleResult(new Error("Request timeout: " + info.options.path), null);
+          handleResult(new Error(`Request timeout: ${info.options.path}`));
         });
         req.on("error", function(err) {
-          handleResult(err, null);
+          handleResult(err);
         });
         if (data && typeof data === "string") {
           req.write(data, "utf8");
@@ -801,7 +1407,7 @@ var require_http_client = __commonJS({
         }
       }
       getAgent(serverUrl) {
-        let parsedUrl = new URL(serverUrl);
+        const parsedUrl = new URL(serverUrl);
         return this._getAgent(parsedUrl);
       }
       _prepareRequest(method, requestUrl, headers) {
@@ -821,21 +1427,19 @@ var require_http_client = __commonJS({
         }
         info.options.agent = this._getAgent(info.parsedUrl);
         if (this.handlers) {
-          this.handlers.forEach((handler4) => {
+          for (const handler4 of this.handlers) {
             handler4.prepareRequest(info.options);
-          });
+          }
         }
         return info;
       }
       _mergeHeaders(headers) {
-        const lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => (c[k.toLowerCase()] = obj[k], c), {});
         if (this.requestOptions && this.requestOptions.headers) {
-          return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers));
+          return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers || {}));
         }
         return lowercaseKeys(headers || {});
       }
       _getExistingOrDefaultHeader(additionalHeaders, header, _default) {
-        const lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => (c[k.toLowerCase()] = obj[k], c), {});
         let clientHeader;
         if (this.requestOptions && this.requestOptions.headers) {
           clientHeader = lowercaseKeys(this.requestOptions.headers)[header];
@@ -844,35 +1448,29 @@ var require_http_client = __commonJS({
       }
       _getAgent(parsedUrl) {
         let agent;
-        let proxyUrl = pm.getProxyUrl(parsedUrl);
-        let useProxy = proxyUrl && proxyUrl.hostname;
+        const proxyUrl = pm.getProxyUrl(parsedUrl);
+        const useProxy = proxyUrl && proxyUrl.hostname;
         if (this._keepAlive && useProxy) {
           agent = this._proxyAgent;
         }
         if (this._keepAlive && !useProxy) {
           agent = this._agent;
         }
-        if (!!agent) {
+        if (agent) {
           return agent;
         }
         const usingSsl = parsedUrl.protocol === "https:";
         let maxSockets = 100;
-        if (!!this.requestOptions) {
+        if (this.requestOptions) {
           maxSockets = this.requestOptions.maxSockets || http3.globalAgent.maxSockets;
         }
-        if (useProxy) {
-          if (!tunnel) {
-            tunnel = require_tunnel2();
-          }
+        if (proxyUrl && proxyUrl.hostname) {
           const agentOptions = {
             maxSockets,
             keepAlive: this._keepAlive,
-            proxy: __spreadProps(__spreadValues({}, (proxyUrl.username || proxyUrl.password) && {
+            proxy: Object.assign(Object.assign({}, (proxyUrl.username || proxyUrl.password) && {
               proxyAuth: `${proxyUrl.username}:${proxyUrl.password}`
-            }), {
-              host: proxyUrl.hostname,
-              port: proxyUrl.port
-            })
+            }), { host: proxyUrl.hostname, port: proxyUrl.port })
           };
           let tunnelAgent;
           const overHttps = proxyUrl.protocol === "https:";
@@ -900,85 +1498,123 @@ var require_http_client = __commonJS({
         return agent;
       }
       _performExponentialBackoff(retryNumber) {
-        retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
-        const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
-        return new Promise((resolve) => setTimeout(() => resolve(), ms));
+        return __awaiter(this, void 0, void 0, function* () {
+          retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
+          const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
+          return new Promise((resolve) => setTimeout(() => resolve(), ms));
+        });
       }
-      static dateTimeDeserializer(key2, value) {
-        if (typeof value === "string") {
-          let a = new Date(value);
-          if (!isNaN(a.valueOf())) {
-            return a;
-          }
-        }
-        return value;
-      }
-      async _processResponse(res, options) {
-        return new Promise(async (resolve, reject) => {
-          const statusCode = res.message.statusCode;
-          const response = {
-            statusCode,
-            result: null,
-            headers: {}
-          };
-          if (statusCode == HttpCodes.NotFound) {
-            resolve(response);
-          }
-          let obj;
-          let contents;
-          try {
-            contents = await res.readBody();
-            if (contents && contents.length > 0) {
-              if (options && options.deserializeDates) {
-                obj = JSON.parse(contents, HttpClient.dateTimeDeserializer);
-              } else {
-                obj = JSON.parse(contents);
+      _processResponse(res, options) {
+        return __awaiter(this, void 0, void 0, function* () {
+          return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+            const statusCode = res.message.statusCode || 0;
+            const response = {
+              statusCode,
+              result: null,
+              headers: {}
+            };
+            if (statusCode === HttpCodes.NotFound) {
+              resolve(response);
+            }
+            function dateTimeDeserializer(key2, value) {
+              if (typeof value === "string") {
+                const a = new Date(value);
+                if (!isNaN(a.valueOf())) {
+                  return a;
+                }
               }
-              response.result = obj;
+              return value;
             }
-            response.headers = res.message.headers;
-          } catch (err) {
-          }
-          if (statusCode > 299) {
-            let msg;
-            if (obj && obj.message) {
-              msg = obj.message;
-            } else if (contents && contents.length > 0) {
-              msg = contents;
+            let obj;
+            let contents;
+            try {
+              contents = yield res.readBody();
+              if (contents && contents.length > 0) {
+                if (options && options.deserializeDates) {
+                  obj = JSON.parse(contents, dateTimeDeserializer);
+                } else {
+                  obj = JSON.parse(contents);
+                }
+                response.result = obj;
+              }
+              response.headers = res.message.headers;
+            } catch (err) {
+            }
+            if (statusCode > 299) {
+              let msg;
+              if (obj && obj.message) {
+                msg = obj.message;
+              } else if (contents && contents.length > 0) {
+                msg = contents;
+              } else {
+                msg = `Failed request: (${statusCode})`;
+              }
+              const err = new HttpClientError(msg, statusCode);
+              err.result = response.result;
+              reject(err);
             } else {
-              msg = "Failed request: (" + statusCode + ")";
+              resolve(response);
             }
-            let err = new HttpClientError(msg, statusCode);
-            err.result = response.result;
-            reject(err);
-          } else {
-            resolve(response);
-          }
+          }));
         });
       }
     };
     exports.HttpClient = HttpClient;
+    var lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => (c[k.toLowerCase()] = obj[k], c), {});
   }
 });
 
-// node_modules/@actions/http-client/auth.js
+// node_modules/@actions/http-client/lib/auth.js
 var require_auth = __commonJS({
-  "node_modules/@actions/http-client/auth.js"(exports) {
+  "node_modules/@actions/http-client/lib/auth.js"(exports) {
     "use strict";
+    var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
+      function adopt(value) {
+        return value instanceof P ? value : new P(function(resolve) {
+          resolve(value);
+        });
+      }
+      return new (P || (P = Promise))(function(resolve, reject) {
+        function fulfilled(value) {
+          try {
+            step(generator.next(value));
+          } catch (e2) {
+            reject(e2);
+          }
+        }
+        function rejected(value) {
+          try {
+            step(generator["throw"](value));
+          } catch (e2) {
+            reject(e2);
+          }
+        }
+        function step(result) {
+          result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+        }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+      });
+    };
     Object.defineProperty(exports, "__esModule", { value: true });
+    exports.PersonalAccessTokenCredentialHandler = exports.BearerCredentialHandler = exports.BasicCredentialHandler = void 0;
     var BasicCredentialHandler = class {
       constructor(username, password) {
         this.username = username;
         this.password = password;
       }
       prepareRequest(options) {
-        options.headers["Authorization"] = "Basic " + Buffer.from(this.username + ":" + this.password).toString("base64");
+        if (!options.headers) {
+          throw Error("The request has no headers");
+        }
+        options.headers["Authorization"] = `Basic ${Buffer.from(`${this.username}:${this.password}`).toString("base64")}`;
       }
-      canHandleAuthentication(response) {
+      canHandleAuthentication() {
         return false;
       }
-      handleAuthentication(httpClient, requestInfo, objs) {
-        return null;
+      handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+          throw new Error("not implemented");
+        });
       }
     };
     exports.BasicCredentialHandler = BasicCredentialHandler;
@@ -987,13 +1623,18 @@ var require_auth = __commonJS({
         this.token = token;
       }
       prepareRequest(options) {
-        options.headers["Authorization"] = "Bearer " + this.token;
+        if (!options.headers) {
+          throw Error("The request has no headers");
+        }
+        options.headers["Authorization"] = `Bearer ${this.token}`;
       }
-      canHandleAuthentication(response) {
+      canHandleAuthentication() {
         return false;
       }
-      handleAuthentication(httpClient, requestInfo, objs) {
-        return null;
+      handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+          throw new Error("not implemented");
+        });
       }
     };
     exports.BearerCredentialHandler = BearerCredentialHandler;
@@ -1002,13 +1643,18 @@ var require_auth = __commonJS({
         this.token = token;
       }
       prepareRequest(options) {
-        options.headers["Authorization"] = "Basic " + Buffer.from("PAT:" + this.token).toString("base64");
+        if (!options.headers) {
+          throw Error("The request has no headers");
+        }
+        options.headers["Authorization"] = `Basic ${Buffer.from(`PAT:${this.token}`).toString("base64")}`;
       }
-      canHandleAuthentication(response) {
+      canHandleAuthentication() {
         return false;
       }
-      handleAuthentication(httpClient, requestInfo, objs) {
-        return null;
+      handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+          throw new Error("not implemented");
+        });
       }
     };
     exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHandler;
@@ -1048,7 +1694,7 @@ var require_oidc_utils = __commonJS({
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.OidcClient = void 0;
-    var http_client_1 = require_http_client();
+    var http_client_1 = require_lib();
     var auth_1 = require_auth();
     var core_1 = require_core();
     var OidcClient = class {
@@ -1110,6 +1756,221 @@ var require_oidc_utils = __commonJS({
       }
     };
     exports.OidcClient = OidcClient;
+  }
+});
+
+// node_modules/@actions/core/lib/summary.js
+var require_summary = __commonJS({
+  "node_modules/@actions/core/lib/summary.js"(exports) {
+    "use strict";
+    var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
+      function adopt(value) {
+        return value instanceof P ? value : new P(function(resolve) {
+          resolve(value);
+        });
+      }
+      return new (P || (P = Promise))(function(resolve, reject) {
+        function fulfilled(value) {
+          try {
+            step(generator.next(value));
+          } catch (e2) {
+            reject(e2);
+          }
+        }
+        function rejected(value) {
+          try {
+            step(generator["throw"](value));
+          } catch (e2) {
+            reject(e2);
+          }
+        }
+        function step(result) {
+          result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+        }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+      });
+    };
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.summary = exports.markdownSummary = exports.SUMMARY_DOCS_URL = exports.SUMMARY_ENV_VAR = void 0;
+    var os_1 = require("os");
+    var fs_1 = require("fs");
+    var { access, appendFile, writeFile } = fs_1.promises;
+    exports.SUMMARY_ENV_VAR = "GITHUB_STEP_SUMMARY";
+    exports.SUMMARY_DOCS_URL = "https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-job-summary";
+    var Summary = class {
+      constructor() {
+        this._buffer = "";
+      }
+      filePath() {
+        return __awaiter(this, void 0, void 0, function* () {
+          if (this._filePath) {
+            return this._filePath;
+          }
+          const pathFromEnv = process.env[exports.SUMMARY_ENV_VAR];
+          if (!pathFromEnv) {
+            throw new Error(`Unable to find environment variable for $${exports.SUMMARY_ENV_VAR}. Check if your runtime environment supports job summaries.`);
+          }
+          try {
+            yield access(pathFromEnv, fs_1.constants.R_OK | fs_1.constants.W_OK);
+          } catch (_a) {
+            throw new Error(`Unable to access summary file: '${pathFromEnv}'. Check if the file has correct read/write permissions.`);
+          }
+          this._filePath = pathFromEnv;
+          return this._filePath;
+        });
+      }
+      wrap(tag, content, attrs = {}) {
+        const htmlAttrs = Object.entries(attrs).map(([key2, value]) => ` ${key2}="${value}"`).join("");
+        if (!content) {
+          return `<${tag}${htmlAttrs}>`;
+        }
+        return `<${tag}${htmlAttrs}>${content}</${tag}>`;
+      }
+      write(options) {
+        return __awaiter(this, void 0, void 0, function* () {
+          const overwrite = !!(options === null || options === void 0 ? void 0 : options.overwrite);
+          const filePath = yield this.filePath();
+          const writeFunc = overwrite ? writeFile : appendFile;
+          yield writeFunc(filePath, this._buffer, { encoding: "utf8" });
+          return this.emptyBuffer();
+        });
+      }
+      clear() {
+        return __awaiter(this, void 0, void 0, function* () {
+          return this.emptyBuffer().write({ overwrite: true });
+        });
+      }
+      stringify() {
+        return this._buffer;
+      }
+      isEmptyBuffer() {
+        return this._buffer.length === 0;
+      }
+      emptyBuffer() {
+        this._buffer = "";
+        return this;
+      }
+      addRaw(text, addEOL = false) {
+        this._buffer += text;
+        return addEOL ? this.addEOL() : this;
+      }
+      addEOL() {
+        return this.addRaw(os_1.EOL);
+      }
+      addCodeBlock(code, lang) {
+        const attrs = Object.assign({}, lang && { lang });
+        const element = this.wrap("pre", this.wrap("code", code), attrs);
+        return this.addRaw(element).addEOL();
+      }
+      addList(items, ordered = false) {
+        const tag = ordered ? "ol" : "ul";
+        const listItems = items.map((item) => this.wrap("li", item)).join("");
+        const element = this.wrap(tag, listItems);
+        return this.addRaw(element).addEOL();
+      }
+      addTable(rows) {
+        const tableBody = rows.map((row) => {
+          const cells = row.map((cell) => {
+            if (typeof cell === "string") {
+              return this.wrap("td", cell);
+            }
+            const { header, data, colspan, rowspan } = cell;
+            const tag = header ? "th" : "td";
+            const attrs = Object.assign(Object.assign({}, colspan && { colspan }), rowspan && { rowspan });
+            return this.wrap(tag, data, attrs);
+          }).join("");
+          return this.wrap("tr", cells);
+        }).join("");
+        const element = this.wrap("table", tableBody);
+        return this.addRaw(element).addEOL();
+      }
+      addDetails(label, content) {
+        const element = this.wrap("details", this.wrap("summary", label) + content);
+        return this.addRaw(element).addEOL();
+      }
+      addImage(src, alt, options) {
+        const { width, height } = options || {};
+        const attrs = Object.assign(Object.assign({}, width && { width }), height && { height });
+        const element = this.wrap("img", null, Object.assign({ src, alt }, attrs));
+        return this.addRaw(element).addEOL();
+      }
+      addHeading(text, level) {
+        const tag = `h${level}`;
+        const allowedTag = ["h1", "h2", "h3", "h4", "h5", "h6"].includes(tag) ? tag : "h1";
+        const element = this.wrap(allowedTag, text);
+        return this.addRaw(element).addEOL();
+      }
+      addSeparator() {
+        const element = this.wrap("hr", null);
+        return this.addRaw(element).addEOL();
+      }
+      addBreak() {
+        const element = this.wrap("br", null);
+        return this.addRaw(element).addEOL();
+      }
+      addQuote(text, cite) {
+        const attrs = Object.assign({}, cite && { cite });
+        const element = this.wrap("blockquote", text, attrs);
+        return this.addRaw(element).addEOL();
+      }
+      addLink(text, href) {
+        const element = this.wrap("a", text, { href });
+        return this.addRaw(element).addEOL();
+      }
+    };
+    var _summary = new Summary();
+    exports.markdownSummary = _summary;
+    exports.summary = _summary;
+  }
+});
+
+// node_modules/@actions/core/lib/path-utils.js
+var require_path_utils = __commonJS({
+  "node_modules/@actions/core/lib/path-utils.js"(exports) {
+    "use strict";
+    var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m2, k, k2) {
+      if (k2 === void 0)
+        k2 = k;
+      Object.defineProperty(o, k2, { enumerable: true, get: function() {
+        return m2[k];
+      } });
+    } : function(o, m2, k, k2) {
+      if (k2 === void 0)
+        k2 = k;
+      o[k2] = m2[k];
+    });
+    var __setModuleDefault = exports && exports.__setModuleDefault || (Object.create ? function(o, v) {
+      Object.defineProperty(o, "default", { enumerable: true, value: v });
+    } : function(o, v) {
+      o["default"] = v;
+    });
+    var __importStar = exports && exports.__importStar || function(mod) {
+      if (mod && mod.__esModule)
+        return mod;
+      var result = {};
+      if (mod != null) {
+        for (var k in mod)
+          if (k !== "default" && Object.hasOwnProperty.call(mod, k))
+            __createBinding(result, mod, k);
+      }
+      __setModuleDefault(result, mod);
+      return result;
+    };
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.toPlatformPath = exports.toWin32Path = exports.toPosixPath = void 0;
+    var path = __importStar(require("path"));
+    function toPosixPath(pth) {
+      return pth.replace(/[\\]/g, "/");
+    }
+    exports.toPosixPath = toPosixPath;
+    function toWin32Path(pth) {
+      return pth.replace(/[/]/g, "\\");
+    }
+    exports.toWin32Path = toWin32Path;
+    function toPlatformPath(pth) {
+      return pth.replace(/[/\\]/g, path.sep);
+    }
+    exports.toPlatformPath = toPlatformPath;
   }
 });
 
@@ -1185,17 +2046,14 @@ var require_core = __commonJS({
       ExitCode2[ExitCode2["Success"] = 0] = "Success";
       ExitCode2[ExitCode2["Failure"] = 1] = "Failure";
     })(ExitCode = exports.ExitCode || (exports.ExitCode = {}));
-    function exportVariable(name, val) {
-      const convertedVal = utils_1.toCommandValue(val);
+    function exportVariable(name, val2) {
+      const convertedVal = utils_1.toCommandValue(val2);
       process.env[name] = convertedVal;
       const filePath = process.env["GITHUB_ENV"] || "";
       if (filePath) {
-        const delimiter = "_GitHubActionsFileCommandDelimeter_";
-        const commandValue = `${name}<<${delimiter}${os2.EOL}${convertedVal}${os2.EOL}${delimiter}`;
-        file_command_1.issueCommand("ENV", commandValue);
-      } else {
-        command_1.issueCommand("set-env", { name }, convertedVal);
+        return file_command_1.issueFileCommand("ENV", file_command_1.prepareKeyValueMessage(name, val2));
       }
+      command_1.issueCommand("set-env", { name }, convertedVal);
     }
     exports.exportVariable = exportVariable;
     function setSecret(secret) {
@@ -1205,7 +2063,7 @@ var require_core = __commonJS({
     function addPath(inputPath) {
       const filePath = process.env["GITHUB_PATH"] || "";
       if (filePath) {
-        file_command_1.issueCommand("PATH", inputPath);
+        file_command_1.issueFileCommand("PATH", inputPath);
       } else {
         command_1.issueCommand("add-path", {}, inputPath);
       }
@@ -1213,36 +2071,43 @@ var require_core = __commonJS({
     }
     exports.addPath = addPath;
     function getInput(name, options) {
-      const val = process.env[`INPUT_${name.replace(/ /g, "_").toUpperCase()}`] || "";
-      if (options && options.required && !val) {
+      const val2 = process.env[`INPUT_${name.replace(/ /g, "_").toUpperCase()}`] || "";
+      if (options && options.required && !val2) {
         throw new Error(`Input required and not supplied: ${name}`);
       }
       if (options && options.trimWhitespace === false) {
-        return val;
+        return val2;
       }
-      return val.trim();
+      return val2.trim();
     }
     exports.getInput = getInput;
     function getMultilineInput(name, options) {
       const inputs = getInput(name, options).split("\n").filter((x2) => x2 !== "");
-      return inputs;
+      if (options && options.trimWhitespace === false) {
+        return inputs;
+      }
+      return inputs.map((input) => input.trim());
     }
     exports.getMultilineInput = getMultilineInput;
     function getBooleanInput(name, options) {
       const trueValue = ["true", "True", "TRUE"];
       const falseValue = ["false", "False", "FALSE"];
-      const val = getInput(name, options);
-      if (trueValue.includes(val))
+      const val2 = getInput(name, options);
+      if (trueValue.includes(val2))
         return true;
-      if (falseValue.includes(val))
+      if (falseValue.includes(val2))
         return false;
       throw new TypeError(`Input does not meet YAML 1.2 "Core Schema" specification: ${name}
 Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
     }
     exports.getBooleanInput = getBooleanInput;
     function setOutput(name, value) {
+      const filePath = process.env["GITHUB_OUTPUT"] || "";
+      if (filePath) {
+        return file_command_1.issueFileCommand("OUTPUT", file_command_1.prepareKeyValueMessage(name, value));
+      }
       process.stdout.write(os2.EOL);
-      command_1.issueCommand("set-output", { name }, value);
+      command_1.issueCommand("set-output", { name }, utils_1.toCommandValue(value));
     }
     exports.setOutput = setOutput;
     function setCommandEcho(enabled) {
@@ -1300,7 +2165,11 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
     }
     exports.group = group;
     function saveState(name, value) {
-      command_1.issueCommand("save-state", { name }, value);
+      const filePath = process.env["GITHUB_STATE"] || "";
+      if (filePath) {
+        return file_command_1.issueFileCommand("STATE", file_command_1.prepareKeyValueMessage(name, value));
+      }
+      command_1.issueCommand("save-state", { name }, utils_1.toCommandValue(value));
     }
     exports.saveState = saveState;
     function getState(name) {
@@ -1313,6 +2182,24 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       });
     }
     exports.getIDToken = getIDToken;
+    var summary_1 = require_summary();
+    Object.defineProperty(exports, "summary", { enumerable: true, get: function() {
+      return summary_1.summary;
+    } });
+    var summary_2 = require_summary();
+    Object.defineProperty(exports, "markdownSummary", { enumerable: true, get: function() {
+      return summary_2.markdownSummary;
+    } });
+    var path_utils_1 = require_path_utils();
+    Object.defineProperty(exports, "toPosixPath", { enumerable: true, get: function() {
+      return path_utils_1.toPosixPath;
+    } });
+    Object.defineProperty(exports, "toWin32Path", { enumerable: true, get: function() {
+      return path_utils_1.toWin32Path;
+    } });
+    Object.defineProperty(exports, "toPlatformPath", { enumerable: true, get: function() {
+      return path_utils_1.toPlatformPath;
+    } });
   }
 });
 
@@ -1525,628 +2412,9492 @@ var require_dayjs_min = __commonJS({
   }
 });
 
-// node_modules/axios/lib/helpers/bind.js
-var require_bind = __commonJS({
-  "node_modules/axios/lib/helpers/bind.js"(exports, module2) {
-    "use strict";
-    module2.exports = function bind(fn, thisArg) {
-      return function wrap() {
-        var args = new Array(arguments.length);
-        for (var i2 = 0; i2 < args.length; i2++) {
-          args[i2] = arguments[i2];
-        }
-        return fn.apply(thisArg, args);
+// node_modules/delayed-stream/lib/delayed_stream.js
+var require_delayed_stream = __commonJS({
+  "node_modules/delayed-stream/lib/delayed_stream.js"(exports, module2) {
+    var Stream3 = require("stream").Stream;
+    var util = require("util");
+    module2.exports = DelayedStream;
+    function DelayedStream() {
+      this.source = null;
+      this.dataSize = 0;
+      this.maxDataSize = 1024 * 1024;
+      this.pauseStream = true;
+      this._maxDataSizeExceeded = false;
+      this._released = false;
+      this._bufferedEvents = [];
+    }
+    util.inherits(DelayedStream, Stream3);
+    DelayedStream.create = function(source, options) {
+      var delayedStream = new this();
+      options = options || {};
+      for (var option in options) {
+        delayedStream[option] = options[option];
+      }
+      delayedStream.source = source;
+      var realEmit = source.emit;
+      source.emit = function() {
+        delayedStream._handleEmit(arguments);
+        return realEmit.apply(source, arguments);
       };
+      source.on("error", function() {
+      });
+      if (delayedStream.pauseStream) {
+        source.pause();
+      }
+      return delayedStream;
     };
-  }
-});
-
-// node_modules/axios/lib/utils.js
-var require_utils2 = __commonJS({
-  "node_modules/axios/lib/utils.js"(exports, module2) {
-    "use strict";
-    var bind = require_bind();
-    var toString2 = Object.prototype.toString;
-    function isArray2(val) {
-      return toString2.call(val) === "[object Array]";
-    }
-    function isUndefined(val) {
-      return typeof val === "undefined";
-    }
-    function isBuffer(val) {
-      return val !== null && !isUndefined(val) && val.constructor !== null && !isUndefined(val.constructor) && typeof val.constructor.isBuffer === "function" && val.constructor.isBuffer(val);
-    }
-    function isArrayBuffer(val) {
-      return toString2.call(val) === "[object ArrayBuffer]";
-    }
-    function isFormData(val) {
-      return typeof FormData !== "undefined" && val instanceof FormData;
-    }
-    function isArrayBufferView(val) {
-      var result;
-      if (typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView) {
-        result = ArrayBuffer.isView(val);
-      } else {
-        result = val && val.buffer && val.buffer instanceof ArrayBuffer;
+    Object.defineProperty(DelayedStream.prototype, "readable", {
+      configurable: true,
+      enumerable: true,
+      get: function() {
+        return this.source.readable;
       }
-      return result;
-    }
-    function isString(val) {
-      return typeof val === "string";
-    }
-    function isNumber(val) {
-      return typeof val === "number";
-    }
-    function isObject(val) {
-      return val !== null && typeof val === "object";
-    }
-    function isPlainObject(val) {
-      if (toString2.call(val) !== "[object Object]") {
-        return false;
+    });
+    DelayedStream.prototype.setEncoding = function() {
+      return this.source.setEncoding.apply(this.source, arguments);
+    };
+    DelayedStream.prototype.resume = function() {
+      if (!this._released) {
+        this.release();
       }
-      var prototype2 = Object.getPrototypeOf(val);
-      return prototype2 === null || prototype2 === Object.prototype;
-    }
-    function isDate(val) {
-      return toString2.call(val) === "[object Date]";
-    }
-    function isFile(val) {
-      return toString2.call(val) === "[object File]";
-    }
-    function isBlob2(val) {
-      return toString2.call(val) === "[object Blob]";
-    }
-    function isFunction(val) {
-      return toString2.call(val) === "[object Function]";
-    }
-    function isStream(val) {
-      return isObject(val) && isFunction(val.pipe);
-    }
-    function isURLSearchParams(val) {
-      return typeof URLSearchParams !== "undefined" && val instanceof URLSearchParams;
-    }
-    function trim(str) {
-      return str.trim ? str.trim() : str.replace(/^\s+|\s+$/g, "");
-    }
-    function isStandardBrowserEnv() {
-      if (typeof navigator !== "undefined" && (navigator.product === "ReactNative" || navigator.product === "NativeScript" || navigator.product === "NS")) {
-        return false;
-      }
-      return typeof window !== "undefined" && typeof document !== "undefined";
-    }
-    function forEach(obj, fn) {
-      if (obj === null || typeof obj === "undefined") {
+      this.source.resume();
+    };
+    DelayedStream.prototype.pause = function() {
+      this.source.pause();
+    };
+    DelayedStream.prototype.release = function() {
+      this._released = true;
+      this._bufferedEvents.forEach(function(args) {
+        this.emit.apply(this, args);
+      }.bind(this));
+      this._bufferedEvents = [];
+    };
+    DelayedStream.prototype.pipe = function() {
+      var r2 = Stream3.prototype.pipe.apply(this, arguments);
+      this.resume();
+      return r2;
+    };
+    DelayedStream.prototype._handleEmit = function(args) {
+      if (this._released) {
+        this.emit.apply(this, args);
         return;
       }
-      if (typeof obj !== "object") {
-        obj = [obj];
+      if (args[0] === "data") {
+        this.dataSize += args[1].length;
+        this._checkIfMaxDataSizeExceeded();
       }
-      if (isArray2(obj)) {
-        for (var i2 = 0, l = obj.length; i2 < l; i2++) {
-          fn.call(null, obj[i2], i2, obj);
-        }
-      } else {
-        for (var key2 in obj) {
-          if (Object.prototype.hasOwnProperty.call(obj, key2)) {
-            fn.call(null, obj[key2], key2, obj);
-          }
-        }
+      this._bufferedEvents.push(args);
+    };
+    DelayedStream.prototype._checkIfMaxDataSizeExceeded = function() {
+      if (this._maxDataSizeExceeded) {
+        return;
       }
+      if (this.dataSize <= this.maxDataSize) {
+        return;
+      }
+      this._maxDataSizeExceeded = true;
+      var message = "DelayedStream#maxDataSize of " + this.maxDataSize + " bytes exceeded.";
+      this.emit("error", new Error(message));
+    };
+  }
+});
+
+// node_modules/combined-stream/lib/combined_stream.js
+var require_combined_stream = __commonJS({
+  "node_modules/combined-stream/lib/combined_stream.js"(exports, module2) {
+    var util = require("util");
+    var Stream3 = require("stream").Stream;
+    var DelayedStream = require_delayed_stream();
+    module2.exports = CombinedStream;
+    function CombinedStream() {
+      this.writable = false;
+      this.readable = true;
+      this.dataSize = 0;
+      this.maxDataSize = 2 * 1024 * 1024;
+      this.pauseStreams = true;
+      this._released = false;
+      this._streams = [];
+      this._currentStream = null;
+      this._insideLoop = false;
+      this._pendingNext = false;
     }
-    function merge() {
-      var result = {};
-      function assignValue(val, key2) {
-        if (isPlainObject(result[key2]) && isPlainObject(val)) {
-          result[key2] = merge(result[key2], val);
-        } else if (isPlainObject(val)) {
-          result[key2] = merge({}, val);
-        } else if (isArray2(val)) {
-          result[key2] = val.slice();
-        } else {
-          result[key2] = val;
+    util.inherits(CombinedStream, Stream3);
+    CombinedStream.create = function(options) {
+      var combinedStream = new this();
+      options = options || {};
+      for (var option in options) {
+        combinedStream[option] = options[option];
+      }
+      return combinedStream;
+    };
+    CombinedStream.isStreamLike = function(stream) {
+      return typeof stream !== "function" && typeof stream !== "string" && typeof stream !== "boolean" && typeof stream !== "number" && !Buffer.isBuffer(stream);
+    };
+    CombinedStream.prototype.append = function(stream) {
+      var isStreamLike = CombinedStream.isStreamLike(stream);
+      if (isStreamLike) {
+        if (!(stream instanceof DelayedStream)) {
+          var newStream = DelayedStream.create(stream, {
+            maxDataSize: Infinity,
+            pauseStream: this.pauseStreams
+          });
+          stream.on("data", this._checkDataSize.bind(this));
+          stream = newStream;
+        }
+        this._handleErrors(stream);
+        if (this.pauseStreams) {
+          stream.pause();
         }
       }
-      for (var i2 = 0, l = arguments.length; i2 < l; i2++) {
-        forEach(arguments[i2], assignValue);
+      this._streams.push(stream);
+      return this;
+    };
+    CombinedStream.prototype.pipe = function(dest, options) {
+      Stream3.prototype.pipe.call(this, dest, options);
+      this.resume();
+      return dest;
+    };
+    CombinedStream.prototype._getNext = function() {
+      this._currentStream = null;
+      if (this._insideLoop) {
+        this._pendingNext = true;
+        return;
       }
-      return result;
-    }
-    function extend(a, b, thisArg) {
-      forEach(b, function assignValue(val, key2) {
-        if (thisArg && typeof val === "function") {
-          a[key2] = bind(val, thisArg);
-        } else {
-          a[key2] = val;
+      this._insideLoop = true;
+      try {
+        do {
+          this._pendingNext = false;
+          this._realGetNext();
+        } while (this._pendingNext);
+      } finally {
+        this._insideLoop = false;
+      }
+    };
+    CombinedStream.prototype._realGetNext = function() {
+      var stream = this._streams.shift();
+      if (typeof stream == "undefined") {
+        this.end();
+        return;
+      }
+      if (typeof stream !== "function") {
+        this._pipeNext(stream);
+        return;
+      }
+      var getStream = stream;
+      getStream(function(stream2) {
+        var isStreamLike = CombinedStream.isStreamLike(stream2);
+        if (isStreamLike) {
+          stream2.on("data", this._checkDataSize.bind(this));
+          this._handleErrors(stream2);
         }
+        this._pipeNext(stream2);
+      }.bind(this));
+    };
+    CombinedStream.prototype._pipeNext = function(stream) {
+      this._currentStream = stream;
+      var isStreamLike = CombinedStream.isStreamLike(stream);
+      if (isStreamLike) {
+        stream.on("end", this._getNext.bind(this));
+        stream.pipe(this, { end: false });
+        return;
+      }
+      var value = stream;
+      this.write(value);
+      this._getNext();
+    };
+    CombinedStream.prototype._handleErrors = function(stream) {
+      var self2 = this;
+      stream.on("error", function(err) {
+        self2._emitError(err);
       });
-      return a;
-    }
-    function stripBOM(content) {
-      if (content.charCodeAt(0) === 65279) {
-        content = content.slice(1);
+    };
+    CombinedStream.prototype.write = function(data) {
+      this.emit("data", data);
+    };
+    CombinedStream.prototype.pause = function() {
+      if (!this.pauseStreams) {
+        return;
       }
-      return content;
-    }
+      if (this.pauseStreams && this._currentStream && typeof this._currentStream.pause == "function")
+        this._currentStream.pause();
+      this.emit("pause");
+    };
+    CombinedStream.prototype.resume = function() {
+      if (!this._released) {
+        this._released = true;
+        this.writable = true;
+        this._getNext();
+      }
+      if (this.pauseStreams && this._currentStream && typeof this._currentStream.resume == "function")
+        this._currentStream.resume();
+      this.emit("resume");
+    };
+    CombinedStream.prototype.end = function() {
+      this._reset();
+      this.emit("end");
+    };
+    CombinedStream.prototype.destroy = function() {
+      this._reset();
+      this.emit("close");
+    };
+    CombinedStream.prototype._reset = function() {
+      this.writable = false;
+      this._streams = [];
+      this._currentStream = null;
+    };
+    CombinedStream.prototype._checkDataSize = function() {
+      this._updateDataSize();
+      if (this.dataSize <= this.maxDataSize) {
+        return;
+      }
+      var message = "DelayedStream#maxDataSize of " + this.maxDataSize + " bytes exceeded.";
+      this._emitError(new Error(message));
+    };
+    CombinedStream.prototype._updateDataSize = function() {
+      this.dataSize = 0;
+      var self2 = this;
+      this._streams.forEach(function(stream) {
+        if (!stream.dataSize) {
+          return;
+        }
+        self2.dataSize += stream.dataSize;
+      });
+      if (this._currentStream && this._currentStream.dataSize) {
+        this.dataSize += this._currentStream.dataSize;
+      }
+    };
+    CombinedStream.prototype._emitError = function(err) {
+      this._reset();
+      this.emit("error", err);
+    };
+  }
+});
+
+// node_modules/mime-db/db.json
+var require_db = __commonJS({
+  "node_modules/mime-db/db.json"(exports, module2) {
     module2.exports = {
-      isArray: isArray2,
-      isArrayBuffer,
-      isBuffer,
-      isFormData,
-      isArrayBufferView,
-      isString,
-      isNumber,
-      isObject,
-      isPlainObject,
-      isUndefined,
-      isDate,
-      isFile,
-      isBlob: isBlob2,
-      isFunction,
-      isStream,
-      isURLSearchParams,
-      isStandardBrowserEnv,
-      forEach,
-      merge,
-      extend,
-      trim,
-      stripBOM
+      "application/1d-interleaved-parityfec": {
+        source: "iana"
+      },
+      "application/3gpdash-qoe-report+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/3gpp-ims+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/3gpphal+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/3gpphalforms+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/a2l": {
+        source: "iana"
+      },
+      "application/ace+cbor": {
+        source: "iana"
+      },
+      "application/activemessage": {
+        source: "iana"
+      },
+      "application/activity+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-costmap+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-costmapfilter+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-directory+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-endpointcost+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-endpointcostparams+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-endpointprop+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-endpointpropparams+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-error+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-networkmap+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-networkmapfilter+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-updatestreamcontrol+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-updatestreamparams+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/aml": {
+        source: "iana"
+      },
+      "application/andrew-inset": {
+        source: "iana",
+        extensions: ["ez"]
+      },
+      "application/applefile": {
+        source: "iana"
+      },
+      "application/applixware": {
+        source: "apache",
+        extensions: ["aw"]
+      },
+      "application/at+jwt": {
+        source: "iana"
+      },
+      "application/atf": {
+        source: "iana"
+      },
+      "application/atfx": {
+        source: "iana"
+      },
+      "application/atom+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["atom"]
+      },
+      "application/atomcat+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["atomcat"]
+      },
+      "application/atomdeleted+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["atomdeleted"]
+      },
+      "application/atomicmail": {
+        source: "iana"
+      },
+      "application/atomsvc+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["atomsvc"]
+      },
+      "application/atsc-dwd+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["dwd"]
+      },
+      "application/atsc-dynamic-event-message": {
+        source: "iana"
+      },
+      "application/atsc-held+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["held"]
+      },
+      "application/atsc-rdt+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/atsc-rsat+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rsat"]
+      },
+      "application/atxml": {
+        source: "iana"
+      },
+      "application/auth-policy+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/bacnet-xdd+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/batch-smtp": {
+        source: "iana"
+      },
+      "application/bdoc": {
+        compressible: false,
+        extensions: ["bdoc"]
+      },
+      "application/beep+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/calendar+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/calendar+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xcs"]
+      },
+      "application/call-completion": {
+        source: "iana"
+      },
+      "application/cals-1840": {
+        source: "iana"
+      },
+      "application/captive+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/cbor": {
+        source: "iana"
+      },
+      "application/cbor-seq": {
+        source: "iana"
+      },
+      "application/cccex": {
+        source: "iana"
+      },
+      "application/ccmp+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/ccxml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ccxml"]
+      },
+      "application/cdfx+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["cdfx"]
+      },
+      "application/cdmi-capability": {
+        source: "iana",
+        extensions: ["cdmia"]
+      },
+      "application/cdmi-container": {
+        source: "iana",
+        extensions: ["cdmic"]
+      },
+      "application/cdmi-domain": {
+        source: "iana",
+        extensions: ["cdmid"]
+      },
+      "application/cdmi-object": {
+        source: "iana",
+        extensions: ["cdmio"]
+      },
+      "application/cdmi-queue": {
+        source: "iana",
+        extensions: ["cdmiq"]
+      },
+      "application/cdni": {
+        source: "iana"
+      },
+      "application/cea": {
+        source: "iana"
+      },
+      "application/cea-2018+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/cellml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/cfw": {
+        source: "iana"
+      },
+      "application/city+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/clr": {
+        source: "iana"
+      },
+      "application/clue+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/clue_info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/cms": {
+        source: "iana"
+      },
+      "application/cnrp+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/coap-group+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/coap-payload": {
+        source: "iana"
+      },
+      "application/commonground": {
+        source: "iana"
+      },
+      "application/conference-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/cose": {
+        source: "iana"
+      },
+      "application/cose-key": {
+        source: "iana"
+      },
+      "application/cose-key-set": {
+        source: "iana"
+      },
+      "application/cpl+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["cpl"]
+      },
+      "application/csrattrs": {
+        source: "iana"
+      },
+      "application/csta+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/cstadata+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/csvm+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/cu-seeme": {
+        source: "apache",
+        extensions: ["cu"]
+      },
+      "application/cwt": {
+        source: "iana"
+      },
+      "application/cybercash": {
+        source: "iana"
+      },
+      "application/dart": {
+        compressible: true
+      },
+      "application/dash+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mpd"]
+      },
+      "application/dash-patch+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mpp"]
+      },
+      "application/dashdelta": {
+        source: "iana"
+      },
+      "application/davmount+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["davmount"]
+      },
+      "application/dca-rft": {
+        source: "iana"
+      },
+      "application/dcd": {
+        source: "iana"
+      },
+      "application/dec-dx": {
+        source: "iana"
+      },
+      "application/dialog-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/dicom": {
+        source: "iana"
+      },
+      "application/dicom+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/dicom+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/dii": {
+        source: "iana"
+      },
+      "application/dit": {
+        source: "iana"
+      },
+      "application/dns": {
+        source: "iana"
+      },
+      "application/dns+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/dns-message": {
+        source: "iana"
+      },
+      "application/docbook+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["dbk"]
+      },
+      "application/dots+cbor": {
+        source: "iana"
+      },
+      "application/dskpp+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/dssc+der": {
+        source: "iana",
+        extensions: ["dssc"]
+      },
+      "application/dssc+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xdssc"]
+      },
+      "application/dvcs": {
+        source: "iana"
+      },
+      "application/ecmascript": {
+        source: "iana",
+        compressible: true,
+        extensions: ["es", "ecma"]
+      },
+      "application/edi-consent": {
+        source: "iana"
+      },
+      "application/edi-x12": {
+        source: "iana",
+        compressible: false
+      },
+      "application/edifact": {
+        source: "iana",
+        compressible: false
+      },
+      "application/efi": {
+        source: "iana"
+      },
+      "application/elm+json": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/elm+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emergencycalldata.cap+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/emergencycalldata.comment+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emergencycalldata.control+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emergencycalldata.deviceinfo+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emergencycalldata.ecall.msd": {
+        source: "iana"
+      },
+      "application/emergencycalldata.providerinfo+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emergencycalldata.serviceinfo+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emergencycalldata.subscriberinfo+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emergencycalldata.veds+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emma+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["emma"]
+      },
+      "application/emotionml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["emotionml"]
+      },
+      "application/encaprtp": {
+        source: "iana"
+      },
+      "application/epp+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/epub+zip": {
+        source: "iana",
+        compressible: false,
+        extensions: ["epub"]
+      },
+      "application/eshop": {
+        source: "iana"
+      },
+      "application/exi": {
+        source: "iana",
+        extensions: ["exi"]
+      },
+      "application/expect-ct-report+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/express": {
+        source: "iana",
+        extensions: ["exp"]
+      },
+      "application/fastinfoset": {
+        source: "iana"
+      },
+      "application/fastsoap": {
+        source: "iana"
+      },
+      "application/fdt+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["fdt"]
+      },
+      "application/fhir+json": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/fhir+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/fido.trusted-apps+json": {
+        compressible: true
+      },
+      "application/fits": {
+        source: "iana"
+      },
+      "application/flexfec": {
+        source: "iana"
+      },
+      "application/font-sfnt": {
+        source: "iana"
+      },
+      "application/font-tdpfr": {
+        source: "iana",
+        extensions: ["pfr"]
+      },
+      "application/font-woff": {
+        source: "iana",
+        compressible: false
+      },
+      "application/framework-attributes+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/geo+json": {
+        source: "iana",
+        compressible: true,
+        extensions: ["geojson"]
+      },
+      "application/geo+json-seq": {
+        source: "iana"
+      },
+      "application/geopackage+sqlite3": {
+        source: "iana"
+      },
+      "application/geoxacml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/gltf-buffer": {
+        source: "iana"
+      },
+      "application/gml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["gml"]
+      },
+      "application/gpx+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["gpx"]
+      },
+      "application/gxf": {
+        source: "apache",
+        extensions: ["gxf"]
+      },
+      "application/gzip": {
+        source: "iana",
+        compressible: false,
+        extensions: ["gz"]
+      },
+      "application/h224": {
+        source: "iana"
+      },
+      "application/held+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/hjson": {
+        extensions: ["hjson"]
+      },
+      "application/http": {
+        source: "iana"
+      },
+      "application/hyperstudio": {
+        source: "iana",
+        extensions: ["stk"]
+      },
+      "application/ibe-key-request+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/ibe-pkg-reply+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/ibe-pp-data": {
+        source: "iana"
+      },
+      "application/iges": {
+        source: "iana"
+      },
+      "application/im-iscomposing+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/index": {
+        source: "iana"
+      },
+      "application/index.cmd": {
+        source: "iana"
+      },
+      "application/index.obj": {
+        source: "iana"
+      },
+      "application/index.response": {
+        source: "iana"
+      },
+      "application/index.vnd": {
+        source: "iana"
+      },
+      "application/inkml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ink", "inkml"]
+      },
+      "application/iotp": {
+        source: "iana"
+      },
+      "application/ipfix": {
+        source: "iana",
+        extensions: ["ipfix"]
+      },
+      "application/ipp": {
+        source: "iana"
+      },
+      "application/isup": {
+        source: "iana"
+      },
+      "application/its+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["its"]
+      },
+      "application/java-archive": {
+        source: "apache",
+        compressible: false,
+        extensions: ["jar", "war", "ear"]
+      },
+      "application/java-serialized-object": {
+        source: "apache",
+        compressible: false,
+        extensions: ["ser"]
+      },
+      "application/java-vm": {
+        source: "apache",
+        compressible: false,
+        extensions: ["class"]
+      },
+      "application/javascript": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["js", "mjs"]
+      },
+      "application/jf2feed+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/jose": {
+        source: "iana"
+      },
+      "application/jose+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/jrd+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/jscalendar+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/json": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["json", "map"]
+      },
+      "application/json-patch+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/json-seq": {
+        source: "iana"
+      },
+      "application/json5": {
+        extensions: ["json5"]
+      },
+      "application/jsonml+json": {
+        source: "apache",
+        compressible: true,
+        extensions: ["jsonml"]
+      },
+      "application/jwk+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/jwk-set+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/jwt": {
+        source: "iana"
+      },
+      "application/kpml-request+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/kpml-response+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/ld+json": {
+        source: "iana",
+        compressible: true,
+        extensions: ["jsonld"]
+      },
+      "application/lgr+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["lgr"]
+      },
+      "application/link-format": {
+        source: "iana"
+      },
+      "application/load-control+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/lost+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["lostxml"]
+      },
+      "application/lostsync+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/lpf+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/lxf": {
+        source: "iana"
+      },
+      "application/mac-binhex40": {
+        source: "iana",
+        extensions: ["hqx"]
+      },
+      "application/mac-compactpro": {
+        source: "apache",
+        extensions: ["cpt"]
+      },
+      "application/macwriteii": {
+        source: "iana"
+      },
+      "application/mads+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mads"]
+      },
+      "application/manifest+json": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["webmanifest"]
+      },
+      "application/marc": {
+        source: "iana",
+        extensions: ["mrc"]
+      },
+      "application/marcxml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mrcx"]
+      },
+      "application/mathematica": {
+        source: "iana",
+        extensions: ["ma", "nb", "mb"]
+      },
+      "application/mathml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mathml"]
+      },
+      "application/mathml-content+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mathml-presentation+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-associated-procedure-description+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-deregister+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-envelope+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-msk+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-msk-response+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-protection-description+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-reception-report+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-register+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-register-response+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-schedule+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-user-service-description+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbox": {
+        source: "iana",
+        extensions: ["mbox"]
+      },
+      "application/media-policy-dataset+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mpf"]
+      },
+      "application/media_control+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mediaservercontrol+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mscml"]
+      },
+      "application/merge-patch+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/metalink+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["metalink"]
+      },
+      "application/metalink4+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["meta4"]
+      },
+      "application/mets+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mets"]
+      },
+      "application/mf4": {
+        source: "iana"
+      },
+      "application/mikey": {
+        source: "iana"
+      },
+      "application/mipc": {
+        source: "iana"
+      },
+      "application/missing-blocks+cbor-seq": {
+        source: "iana"
+      },
+      "application/mmt-aei+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["maei"]
+      },
+      "application/mmt-usd+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["musd"]
+      },
+      "application/mods+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mods"]
+      },
+      "application/moss-keys": {
+        source: "iana"
+      },
+      "application/moss-signature": {
+        source: "iana"
+      },
+      "application/mosskey-data": {
+        source: "iana"
+      },
+      "application/mosskey-request": {
+        source: "iana"
+      },
+      "application/mp21": {
+        source: "iana",
+        extensions: ["m21", "mp21"]
+      },
+      "application/mp4": {
+        source: "iana",
+        extensions: ["mp4s", "m4p"]
+      },
+      "application/mpeg4-generic": {
+        source: "iana"
+      },
+      "application/mpeg4-iod": {
+        source: "iana"
+      },
+      "application/mpeg4-iod-xmt": {
+        source: "iana"
+      },
+      "application/mrb-consumer+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mrb-publish+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/msc-ivr+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/msc-mixer+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/msword": {
+        source: "iana",
+        compressible: false,
+        extensions: ["doc", "dot"]
+      },
+      "application/mud+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/multipart-core": {
+        source: "iana"
+      },
+      "application/mxf": {
+        source: "iana",
+        extensions: ["mxf"]
+      },
+      "application/n-quads": {
+        source: "iana",
+        extensions: ["nq"]
+      },
+      "application/n-triples": {
+        source: "iana",
+        extensions: ["nt"]
+      },
+      "application/nasdata": {
+        source: "iana"
+      },
+      "application/news-checkgroups": {
+        source: "iana",
+        charset: "US-ASCII"
+      },
+      "application/news-groupinfo": {
+        source: "iana",
+        charset: "US-ASCII"
+      },
+      "application/news-transmission": {
+        source: "iana"
+      },
+      "application/nlsml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/node": {
+        source: "iana",
+        extensions: ["cjs"]
+      },
+      "application/nss": {
+        source: "iana"
+      },
+      "application/oauth-authz-req+jwt": {
+        source: "iana"
+      },
+      "application/oblivious-dns-message": {
+        source: "iana"
+      },
+      "application/ocsp-request": {
+        source: "iana"
+      },
+      "application/ocsp-response": {
+        source: "iana"
+      },
+      "application/octet-stream": {
+        source: "iana",
+        compressible: false,
+        extensions: ["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"]
+      },
+      "application/oda": {
+        source: "iana",
+        extensions: ["oda"]
+      },
+      "application/odm+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/odx": {
+        source: "iana"
+      },
+      "application/oebps-package+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["opf"]
+      },
+      "application/ogg": {
+        source: "iana",
+        compressible: false,
+        extensions: ["ogx"]
+      },
+      "application/omdoc+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["omdoc"]
+      },
+      "application/onenote": {
+        source: "apache",
+        extensions: ["onetoc", "onetoc2", "onetmp", "onepkg"]
+      },
+      "application/opc-nodeset+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/oscore": {
+        source: "iana"
+      },
+      "application/oxps": {
+        source: "iana",
+        extensions: ["oxps"]
+      },
+      "application/p21": {
+        source: "iana"
+      },
+      "application/p21+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/p2p-overlay+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["relo"]
+      },
+      "application/parityfec": {
+        source: "iana"
+      },
+      "application/passport": {
+        source: "iana"
+      },
+      "application/patch-ops-error+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xer"]
+      },
+      "application/pdf": {
+        source: "iana",
+        compressible: false,
+        extensions: ["pdf"]
+      },
+      "application/pdx": {
+        source: "iana"
+      },
+      "application/pem-certificate-chain": {
+        source: "iana"
+      },
+      "application/pgp-encrypted": {
+        source: "iana",
+        compressible: false,
+        extensions: ["pgp"]
+      },
+      "application/pgp-keys": {
+        source: "iana",
+        extensions: ["asc"]
+      },
+      "application/pgp-signature": {
+        source: "iana",
+        extensions: ["asc", "sig"]
+      },
+      "application/pics-rules": {
+        source: "apache",
+        extensions: ["prf"]
+      },
+      "application/pidf+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/pidf-diff+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/pkcs10": {
+        source: "iana",
+        extensions: ["p10"]
+      },
+      "application/pkcs12": {
+        source: "iana"
+      },
+      "application/pkcs7-mime": {
+        source: "iana",
+        extensions: ["p7m", "p7c"]
+      },
+      "application/pkcs7-signature": {
+        source: "iana",
+        extensions: ["p7s"]
+      },
+      "application/pkcs8": {
+        source: "iana",
+        extensions: ["p8"]
+      },
+      "application/pkcs8-encrypted": {
+        source: "iana"
+      },
+      "application/pkix-attr-cert": {
+        source: "iana",
+        extensions: ["ac"]
+      },
+      "application/pkix-cert": {
+        source: "iana",
+        extensions: ["cer"]
+      },
+      "application/pkix-crl": {
+        source: "iana",
+        extensions: ["crl"]
+      },
+      "application/pkix-pkipath": {
+        source: "iana",
+        extensions: ["pkipath"]
+      },
+      "application/pkixcmp": {
+        source: "iana",
+        extensions: ["pki"]
+      },
+      "application/pls+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["pls"]
+      },
+      "application/poc-settings+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/postscript": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ai", "eps", "ps"]
+      },
+      "application/ppsp-tracker+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/problem+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/problem+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/provenance+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["provx"]
+      },
+      "application/prs.alvestrand.titrax-sheet": {
+        source: "iana"
+      },
+      "application/prs.cww": {
+        source: "iana",
+        extensions: ["cww"]
+      },
+      "application/prs.cyn": {
+        source: "iana",
+        charset: "7-BIT"
+      },
+      "application/prs.hpub+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/prs.nprend": {
+        source: "iana"
+      },
+      "application/prs.plucker": {
+        source: "iana"
+      },
+      "application/prs.rdf-xml-crypt": {
+        source: "iana"
+      },
+      "application/prs.xsf+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/pskc+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["pskcxml"]
+      },
+      "application/pvd+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/qsig": {
+        source: "iana"
+      },
+      "application/raml+yaml": {
+        compressible: true,
+        extensions: ["raml"]
+      },
+      "application/raptorfec": {
+        source: "iana"
+      },
+      "application/rdap+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/rdf+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rdf", "owl"]
+      },
+      "application/reginfo+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rif"]
+      },
+      "application/relax-ng-compact-syntax": {
+        source: "iana",
+        extensions: ["rnc"]
+      },
+      "application/remote-printing": {
+        source: "iana"
+      },
+      "application/reputon+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/resource-lists+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rl"]
+      },
+      "application/resource-lists-diff+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rld"]
+      },
+      "application/rfc+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/riscos": {
+        source: "iana"
+      },
+      "application/rlmi+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/rls-services+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rs"]
+      },
+      "application/route-apd+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rapd"]
+      },
+      "application/route-s-tsid+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["sls"]
+      },
+      "application/route-usd+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rusd"]
+      },
+      "application/rpki-ghostbusters": {
+        source: "iana",
+        extensions: ["gbr"]
+      },
+      "application/rpki-manifest": {
+        source: "iana",
+        extensions: ["mft"]
+      },
+      "application/rpki-publication": {
+        source: "iana"
+      },
+      "application/rpki-roa": {
+        source: "iana",
+        extensions: ["roa"]
+      },
+      "application/rpki-updown": {
+        source: "iana"
+      },
+      "application/rsd+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["rsd"]
+      },
+      "application/rss+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["rss"]
+      },
+      "application/rtf": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rtf"]
+      },
+      "application/rtploopback": {
+        source: "iana"
+      },
+      "application/rtx": {
+        source: "iana"
+      },
+      "application/samlassertion+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/samlmetadata+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/sarif+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/sarif-external-properties+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/sbe": {
+        source: "iana"
+      },
+      "application/sbml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["sbml"]
+      },
+      "application/scaip+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/scim+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/scvp-cv-request": {
+        source: "iana",
+        extensions: ["scq"]
+      },
+      "application/scvp-cv-response": {
+        source: "iana",
+        extensions: ["scs"]
+      },
+      "application/scvp-vp-request": {
+        source: "iana",
+        extensions: ["spq"]
+      },
+      "application/scvp-vp-response": {
+        source: "iana",
+        extensions: ["spp"]
+      },
+      "application/sdp": {
+        source: "iana",
+        extensions: ["sdp"]
+      },
+      "application/secevent+jwt": {
+        source: "iana"
+      },
+      "application/senml+cbor": {
+        source: "iana"
+      },
+      "application/senml+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/senml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["senmlx"]
+      },
+      "application/senml-etch+cbor": {
+        source: "iana"
+      },
+      "application/senml-etch+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/senml-exi": {
+        source: "iana"
+      },
+      "application/sensml+cbor": {
+        source: "iana"
+      },
+      "application/sensml+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/sensml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["sensmlx"]
+      },
+      "application/sensml-exi": {
+        source: "iana"
+      },
+      "application/sep+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/sep-exi": {
+        source: "iana"
+      },
+      "application/session-info": {
+        source: "iana"
+      },
+      "application/set-payment": {
+        source: "iana"
+      },
+      "application/set-payment-initiation": {
+        source: "iana",
+        extensions: ["setpay"]
+      },
+      "application/set-registration": {
+        source: "iana"
+      },
+      "application/set-registration-initiation": {
+        source: "iana",
+        extensions: ["setreg"]
+      },
+      "application/sgml": {
+        source: "iana"
+      },
+      "application/sgml-open-catalog": {
+        source: "iana"
+      },
+      "application/shf+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["shf"]
+      },
+      "application/sieve": {
+        source: "iana",
+        extensions: ["siv", "sieve"]
+      },
+      "application/simple-filter+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/simple-message-summary": {
+        source: "iana"
+      },
+      "application/simplesymbolcontainer": {
+        source: "iana"
+      },
+      "application/sipc": {
+        source: "iana"
+      },
+      "application/slate": {
+        source: "iana"
+      },
+      "application/smil": {
+        source: "iana"
+      },
+      "application/smil+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["smi", "smil"]
+      },
+      "application/smpte336m": {
+        source: "iana"
+      },
+      "application/soap+fastinfoset": {
+        source: "iana"
+      },
+      "application/soap+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/sparql-query": {
+        source: "iana",
+        extensions: ["rq"]
+      },
+      "application/sparql-results+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["srx"]
+      },
+      "application/spdx+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/spirits-event+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/sql": {
+        source: "iana"
+      },
+      "application/srgs": {
+        source: "iana",
+        extensions: ["gram"]
+      },
+      "application/srgs+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["grxml"]
+      },
+      "application/sru+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["sru"]
+      },
+      "application/ssdl+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["ssdl"]
+      },
+      "application/ssml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ssml"]
+      },
+      "application/stix+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/swid+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["swidtag"]
+      },
+      "application/tamp-apex-update": {
+        source: "iana"
+      },
+      "application/tamp-apex-update-confirm": {
+        source: "iana"
+      },
+      "application/tamp-community-update": {
+        source: "iana"
+      },
+      "application/tamp-community-update-confirm": {
+        source: "iana"
+      },
+      "application/tamp-error": {
+        source: "iana"
+      },
+      "application/tamp-sequence-adjust": {
+        source: "iana"
+      },
+      "application/tamp-sequence-adjust-confirm": {
+        source: "iana"
+      },
+      "application/tamp-status-query": {
+        source: "iana"
+      },
+      "application/tamp-status-response": {
+        source: "iana"
+      },
+      "application/tamp-update": {
+        source: "iana"
+      },
+      "application/tamp-update-confirm": {
+        source: "iana"
+      },
+      "application/tar": {
+        compressible: true
+      },
+      "application/taxii+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/td+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/tei+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["tei", "teicorpus"]
+      },
+      "application/tetra_isi": {
+        source: "iana"
+      },
+      "application/thraud+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["tfi"]
+      },
+      "application/timestamp-query": {
+        source: "iana"
+      },
+      "application/timestamp-reply": {
+        source: "iana"
+      },
+      "application/timestamped-data": {
+        source: "iana",
+        extensions: ["tsd"]
+      },
+      "application/tlsrpt+gzip": {
+        source: "iana"
+      },
+      "application/tlsrpt+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/tnauthlist": {
+        source: "iana"
+      },
+      "application/token-introspection+jwt": {
+        source: "iana"
+      },
+      "application/toml": {
+        compressible: true,
+        extensions: ["toml"]
+      },
+      "application/trickle-ice-sdpfrag": {
+        source: "iana"
+      },
+      "application/trig": {
+        source: "iana",
+        extensions: ["trig"]
+      },
+      "application/ttml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ttml"]
+      },
+      "application/tve-trigger": {
+        source: "iana"
+      },
+      "application/tzif": {
+        source: "iana"
+      },
+      "application/tzif-leap": {
+        source: "iana"
+      },
+      "application/ubjson": {
+        compressible: false,
+        extensions: ["ubj"]
+      },
+      "application/ulpfec": {
+        source: "iana"
+      },
+      "application/urc-grpsheet+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/urc-ressheet+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rsheet"]
+      },
+      "application/urc-targetdesc+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["td"]
+      },
+      "application/urc-uisocketdesc+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vcard+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vcard+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vemmi": {
+        source: "iana"
+      },
+      "application/vividence.scriptfile": {
+        source: "apache"
+      },
+      "application/vnd.1000minds.decision-model+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["1km"]
+      },
+      "application/vnd.3gpp-prose+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp-prose-pc3ch+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp-v2x-local-service-information": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.5gnas": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.access-transfer-events+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.bsf+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.gmop+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.gtpc": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.interworking-data": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.lpp": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.mc-signalling-ear": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.mcdata-affiliation-command+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcdata-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcdata-payload": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.mcdata-service-config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcdata-signalling": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.mcdata-ue-config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcdata-user-profile+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-affiliation-command+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-floor-request+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-location-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-mbms-usage-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-service-config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-signed+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-ue-config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-ue-init-config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-user-profile+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-affiliation-command+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-affiliation-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-location-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-mbms-usage-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-service-config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-transmission-request+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-ue-config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-user-profile+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mid-call+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.ngap": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.pfcp": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.pic-bw-large": {
+        source: "iana",
+        extensions: ["plb"]
+      },
+      "application/vnd.3gpp.pic-bw-small": {
+        source: "iana",
+        extensions: ["psb"]
+      },
+      "application/vnd.3gpp.pic-bw-var": {
+        source: "iana",
+        extensions: ["pvb"]
+      },
+      "application/vnd.3gpp.s1ap": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.sms": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.sms+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.srvcc-ext+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.srvcc-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.state-and-event-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.ussd+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp2.bcmcsinfo+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp2.sms": {
+        source: "iana"
+      },
+      "application/vnd.3gpp2.tcap": {
+        source: "iana",
+        extensions: ["tcap"]
+      },
+      "application/vnd.3lightssoftware.imagescal": {
+        source: "iana"
+      },
+      "application/vnd.3m.post-it-notes": {
+        source: "iana",
+        extensions: ["pwn"]
+      },
+      "application/vnd.accpac.simply.aso": {
+        source: "iana",
+        extensions: ["aso"]
+      },
+      "application/vnd.accpac.simply.imp": {
+        source: "iana",
+        extensions: ["imp"]
+      },
+      "application/vnd.acucobol": {
+        source: "iana",
+        extensions: ["acu"]
+      },
+      "application/vnd.acucorp": {
+        source: "iana",
+        extensions: ["atc", "acutc"]
+      },
+      "application/vnd.adobe.air-application-installer-package+zip": {
+        source: "apache",
+        compressible: false,
+        extensions: ["air"]
+      },
+      "application/vnd.adobe.flash.movie": {
+        source: "iana"
+      },
+      "application/vnd.adobe.formscentral.fcdt": {
+        source: "iana",
+        extensions: ["fcdt"]
+      },
+      "application/vnd.adobe.fxp": {
+        source: "iana",
+        extensions: ["fxp", "fxpl"]
+      },
+      "application/vnd.adobe.partial-upload": {
+        source: "iana"
+      },
+      "application/vnd.adobe.xdp+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xdp"]
+      },
+      "application/vnd.adobe.xfdf": {
+        source: "iana",
+        extensions: ["xfdf"]
+      },
+      "application/vnd.aether.imp": {
+        source: "iana"
+      },
+      "application/vnd.afpc.afplinedata": {
+        source: "iana"
+      },
+      "application/vnd.afpc.afplinedata-pagedef": {
+        source: "iana"
+      },
+      "application/vnd.afpc.cmoca-cmresource": {
+        source: "iana"
+      },
+      "application/vnd.afpc.foca-charset": {
+        source: "iana"
+      },
+      "application/vnd.afpc.foca-codedfont": {
+        source: "iana"
+      },
+      "application/vnd.afpc.foca-codepage": {
+        source: "iana"
+      },
+      "application/vnd.afpc.modca": {
+        source: "iana"
+      },
+      "application/vnd.afpc.modca-cmtable": {
+        source: "iana"
+      },
+      "application/vnd.afpc.modca-formdef": {
+        source: "iana"
+      },
+      "application/vnd.afpc.modca-mediummap": {
+        source: "iana"
+      },
+      "application/vnd.afpc.modca-objectcontainer": {
+        source: "iana"
+      },
+      "application/vnd.afpc.modca-overlay": {
+        source: "iana"
+      },
+      "application/vnd.afpc.modca-pagesegment": {
+        source: "iana"
+      },
+      "application/vnd.age": {
+        source: "iana",
+        extensions: ["age"]
+      },
+      "application/vnd.ah-barcode": {
+        source: "iana"
+      },
+      "application/vnd.ahead.space": {
+        source: "iana",
+        extensions: ["ahead"]
+      },
+      "application/vnd.airzip.filesecure.azf": {
+        source: "iana",
+        extensions: ["azf"]
+      },
+      "application/vnd.airzip.filesecure.azs": {
+        source: "iana",
+        extensions: ["azs"]
+      },
+      "application/vnd.amadeus+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.amazon.ebook": {
+        source: "apache",
+        extensions: ["azw"]
+      },
+      "application/vnd.amazon.mobi8-ebook": {
+        source: "iana"
+      },
+      "application/vnd.americandynamics.acc": {
+        source: "iana",
+        extensions: ["acc"]
+      },
+      "application/vnd.amiga.ami": {
+        source: "iana",
+        extensions: ["ami"]
+      },
+      "application/vnd.amundsen.maze+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.android.ota": {
+        source: "iana"
+      },
+      "application/vnd.android.package-archive": {
+        source: "apache",
+        compressible: false,
+        extensions: ["apk"]
+      },
+      "application/vnd.anki": {
+        source: "iana"
+      },
+      "application/vnd.anser-web-certificate-issue-initiation": {
+        source: "iana",
+        extensions: ["cii"]
+      },
+      "application/vnd.anser-web-funds-transfer-initiation": {
+        source: "apache",
+        extensions: ["fti"]
+      },
+      "application/vnd.antix.game-component": {
+        source: "iana",
+        extensions: ["atx"]
+      },
+      "application/vnd.apache.arrow.file": {
+        source: "iana"
+      },
+      "application/vnd.apache.arrow.stream": {
+        source: "iana"
+      },
+      "application/vnd.apache.thrift.binary": {
+        source: "iana"
+      },
+      "application/vnd.apache.thrift.compact": {
+        source: "iana"
+      },
+      "application/vnd.apache.thrift.json": {
+        source: "iana"
+      },
+      "application/vnd.api+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.aplextor.warrp+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.apothekende.reservation+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.apple.installer+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mpkg"]
+      },
+      "application/vnd.apple.keynote": {
+        source: "iana",
+        extensions: ["key"]
+      },
+      "application/vnd.apple.mpegurl": {
+        source: "iana",
+        extensions: ["m3u8"]
+      },
+      "application/vnd.apple.numbers": {
+        source: "iana",
+        extensions: ["numbers"]
+      },
+      "application/vnd.apple.pages": {
+        source: "iana",
+        extensions: ["pages"]
+      },
+      "application/vnd.apple.pkpass": {
+        compressible: false,
+        extensions: ["pkpass"]
+      },
+      "application/vnd.arastra.swi": {
+        source: "iana"
+      },
+      "application/vnd.aristanetworks.swi": {
+        source: "iana",
+        extensions: ["swi"]
+      },
+      "application/vnd.artisan+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.artsquare": {
+        source: "iana"
+      },
+      "application/vnd.astraea-software.iota": {
+        source: "iana",
+        extensions: ["iota"]
+      },
+      "application/vnd.audiograph": {
+        source: "iana",
+        extensions: ["aep"]
+      },
+      "application/vnd.autopackage": {
+        source: "iana"
+      },
+      "application/vnd.avalon+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.avistar+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.balsamiq.bmml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["bmml"]
+      },
+      "application/vnd.balsamiq.bmpr": {
+        source: "iana"
+      },
+      "application/vnd.banana-accounting": {
+        source: "iana"
+      },
+      "application/vnd.bbf.usp.error": {
+        source: "iana"
+      },
+      "application/vnd.bbf.usp.msg": {
+        source: "iana"
+      },
+      "application/vnd.bbf.usp.msg+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.bekitzur-stech+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.bint.med-content": {
+        source: "iana"
+      },
+      "application/vnd.biopax.rdf+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.blink-idb-value-wrapper": {
+        source: "iana"
+      },
+      "application/vnd.blueice.multipass": {
+        source: "iana",
+        extensions: ["mpm"]
+      },
+      "application/vnd.bluetooth.ep.oob": {
+        source: "iana"
+      },
+      "application/vnd.bluetooth.le.oob": {
+        source: "iana"
+      },
+      "application/vnd.bmi": {
+        source: "iana",
+        extensions: ["bmi"]
+      },
+      "application/vnd.bpf": {
+        source: "iana"
+      },
+      "application/vnd.bpf3": {
+        source: "iana"
+      },
+      "application/vnd.businessobjects": {
+        source: "iana",
+        extensions: ["rep"]
+      },
+      "application/vnd.byu.uapi+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.cab-jscript": {
+        source: "iana"
+      },
+      "application/vnd.canon-cpdl": {
+        source: "iana"
+      },
+      "application/vnd.canon-lips": {
+        source: "iana"
+      },
+      "application/vnd.capasystems-pg+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.cendio.thinlinc.clientconf": {
+        source: "iana"
+      },
+      "application/vnd.century-systems.tcp_stream": {
+        source: "iana"
+      },
+      "application/vnd.chemdraw+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["cdxml"]
+      },
+      "application/vnd.chess-pgn": {
+        source: "iana"
+      },
+      "application/vnd.chipnuts.karaoke-mmd": {
+        source: "iana",
+        extensions: ["mmd"]
+      },
+      "application/vnd.ciedi": {
+        source: "iana"
+      },
+      "application/vnd.cinderella": {
+        source: "iana",
+        extensions: ["cdy"]
+      },
+      "application/vnd.cirpack.isdn-ext": {
+        source: "iana"
+      },
+      "application/vnd.citationstyles.style+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["csl"]
+      },
+      "application/vnd.claymore": {
+        source: "iana",
+        extensions: ["cla"]
+      },
+      "application/vnd.cloanto.rp9": {
+        source: "iana",
+        extensions: ["rp9"]
+      },
+      "application/vnd.clonk.c4group": {
+        source: "iana",
+        extensions: ["c4g", "c4d", "c4f", "c4p", "c4u"]
+      },
+      "application/vnd.cluetrust.cartomobile-config": {
+        source: "iana",
+        extensions: ["c11amc"]
+      },
+      "application/vnd.cluetrust.cartomobile-config-pkg": {
+        source: "iana",
+        extensions: ["c11amz"]
+      },
+      "application/vnd.coffeescript": {
+        source: "iana"
+      },
+      "application/vnd.collabio.xodocuments.document": {
+        source: "iana"
+      },
+      "application/vnd.collabio.xodocuments.document-template": {
+        source: "iana"
+      },
+      "application/vnd.collabio.xodocuments.presentation": {
+        source: "iana"
+      },
+      "application/vnd.collabio.xodocuments.presentation-template": {
+        source: "iana"
+      },
+      "application/vnd.collabio.xodocuments.spreadsheet": {
+        source: "iana"
+      },
+      "application/vnd.collabio.xodocuments.spreadsheet-template": {
+        source: "iana"
+      },
+      "application/vnd.collection+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.collection.doc+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.collection.next+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.comicbook+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.comicbook-rar": {
+        source: "iana"
+      },
+      "application/vnd.commerce-battelle": {
+        source: "iana"
+      },
+      "application/vnd.commonspace": {
+        source: "iana",
+        extensions: ["csp"]
+      },
+      "application/vnd.contact.cmsg": {
+        source: "iana",
+        extensions: ["cdbcmsg"]
+      },
+      "application/vnd.coreos.ignition+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.cosmocaller": {
+        source: "iana",
+        extensions: ["cmc"]
+      },
+      "application/vnd.crick.clicker": {
+        source: "iana",
+        extensions: ["clkx"]
+      },
+      "application/vnd.crick.clicker.keyboard": {
+        source: "iana",
+        extensions: ["clkk"]
+      },
+      "application/vnd.crick.clicker.palette": {
+        source: "iana",
+        extensions: ["clkp"]
+      },
+      "application/vnd.crick.clicker.template": {
+        source: "iana",
+        extensions: ["clkt"]
+      },
+      "application/vnd.crick.clicker.wordbank": {
+        source: "iana",
+        extensions: ["clkw"]
+      },
+      "application/vnd.criticaltools.wbs+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["wbs"]
+      },
+      "application/vnd.cryptii.pipe+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.crypto-shade-file": {
+        source: "iana"
+      },
+      "application/vnd.cryptomator.encrypted": {
+        source: "iana"
+      },
+      "application/vnd.cryptomator.vault": {
+        source: "iana"
+      },
+      "application/vnd.ctc-posml": {
+        source: "iana",
+        extensions: ["pml"]
+      },
+      "application/vnd.ctct.ws+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.cups-pdf": {
+        source: "iana"
+      },
+      "application/vnd.cups-postscript": {
+        source: "iana"
+      },
+      "application/vnd.cups-ppd": {
+        source: "iana",
+        extensions: ["ppd"]
+      },
+      "application/vnd.cups-raster": {
+        source: "iana"
+      },
+      "application/vnd.cups-raw": {
+        source: "iana"
+      },
+      "application/vnd.curl": {
+        source: "iana"
+      },
+      "application/vnd.curl.car": {
+        source: "apache",
+        extensions: ["car"]
+      },
+      "application/vnd.curl.pcurl": {
+        source: "apache",
+        extensions: ["pcurl"]
+      },
+      "application/vnd.cyan.dean.root+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.cybank": {
+        source: "iana"
+      },
+      "application/vnd.cyclonedx+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.cyclonedx+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.d2l.coursepackage1p0+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.d3m-dataset": {
+        source: "iana"
+      },
+      "application/vnd.d3m-problem": {
+        source: "iana"
+      },
+      "application/vnd.dart": {
+        source: "iana",
+        compressible: true,
+        extensions: ["dart"]
+      },
+      "application/vnd.data-vision.rdz": {
+        source: "iana",
+        extensions: ["rdz"]
+      },
+      "application/vnd.datapackage+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dataresource+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dbf": {
+        source: "iana",
+        extensions: ["dbf"]
+      },
+      "application/vnd.debian.binary-package": {
+        source: "iana"
+      },
+      "application/vnd.dece.data": {
+        source: "iana",
+        extensions: ["uvf", "uvvf", "uvd", "uvvd"]
+      },
+      "application/vnd.dece.ttml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["uvt", "uvvt"]
+      },
+      "application/vnd.dece.unspecified": {
+        source: "iana",
+        extensions: ["uvx", "uvvx"]
+      },
+      "application/vnd.dece.zip": {
+        source: "iana",
+        extensions: ["uvz", "uvvz"]
+      },
+      "application/vnd.denovo.fcselayout-link": {
+        source: "iana",
+        extensions: ["fe_launch"]
+      },
+      "application/vnd.desmume.movie": {
+        source: "iana"
+      },
+      "application/vnd.dir-bi.plate-dl-nosuffix": {
+        source: "iana"
+      },
+      "application/vnd.dm.delegation+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dna": {
+        source: "iana",
+        extensions: ["dna"]
+      },
+      "application/vnd.document+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dolby.mlp": {
+        source: "apache",
+        extensions: ["mlp"]
+      },
+      "application/vnd.dolby.mobile.1": {
+        source: "iana"
+      },
+      "application/vnd.dolby.mobile.2": {
+        source: "iana"
+      },
+      "application/vnd.doremir.scorecloud-binary-document": {
+        source: "iana"
+      },
+      "application/vnd.dpgraph": {
+        source: "iana",
+        extensions: ["dpg"]
+      },
+      "application/vnd.dreamfactory": {
+        source: "iana",
+        extensions: ["dfac"]
+      },
+      "application/vnd.drive+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ds-keypoint": {
+        source: "apache",
+        extensions: ["kpxx"]
+      },
+      "application/vnd.dtg.local": {
+        source: "iana"
+      },
+      "application/vnd.dtg.local.flash": {
+        source: "iana"
+      },
+      "application/vnd.dtg.local.html": {
+        source: "iana"
+      },
+      "application/vnd.dvb.ait": {
+        source: "iana",
+        extensions: ["ait"]
+      },
+      "application/vnd.dvb.dvbisl+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.dvbj": {
+        source: "iana"
+      },
+      "application/vnd.dvb.esgcontainer": {
+        source: "iana"
+      },
+      "application/vnd.dvb.ipdcdftnotifaccess": {
+        source: "iana"
+      },
+      "application/vnd.dvb.ipdcesgaccess": {
+        source: "iana"
+      },
+      "application/vnd.dvb.ipdcesgaccess2": {
+        source: "iana"
+      },
+      "application/vnd.dvb.ipdcesgpdd": {
+        source: "iana"
+      },
+      "application/vnd.dvb.ipdcroaming": {
+        source: "iana"
+      },
+      "application/vnd.dvb.iptv.alfec-base": {
+        source: "iana"
+      },
+      "application/vnd.dvb.iptv.alfec-enhancement": {
+        source: "iana"
+      },
+      "application/vnd.dvb.notif-aggregate-root+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.notif-container+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.notif-generic+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.notif-ia-msglist+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.notif-ia-registration-request+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.notif-ia-registration-response+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.notif-init+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.pfr": {
+        source: "iana"
+      },
+      "application/vnd.dvb.service": {
+        source: "iana",
+        extensions: ["svc"]
+      },
+      "application/vnd.dxr": {
+        source: "iana"
+      },
+      "application/vnd.dynageo": {
+        source: "iana",
+        extensions: ["geo"]
+      },
+      "application/vnd.dzr": {
+        source: "iana"
+      },
+      "application/vnd.easykaraoke.cdgdownload": {
+        source: "iana"
+      },
+      "application/vnd.ecdis-update": {
+        source: "iana"
+      },
+      "application/vnd.ecip.rlp": {
+        source: "iana"
+      },
+      "application/vnd.eclipse.ditto+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ecowin.chart": {
+        source: "iana",
+        extensions: ["mag"]
+      },
+      "application/vnd.ecowin.filerequest": {
+        source: "iana"
+      },
+      "application/vnd.ecowin.fileupdate": {
+        source: "iana"
+      },
+      "application/vnd.ecowin.series": {
+        source: "iana"
+      },
+      "application/vnd.ecowin.seriesrequest": {
+        source: "iana"
+      },
+      "application/vnd.ecowin.seriesupdate": {
+        source: "iana"
+      },
+      "application/vnd.efi.img": {
+        source: "iana"
+      },
+      "application/vnd.efi.iso": {
+        source: "iana"
+      },
+      "application/vnd.emclient.accessrequest+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.enliven": {
+        source: "iana",
+        extensions: ["nml"]
+      },
+      "application/vnd.enphase.envoy": {
+        source: "iana"
+      },
+      "application/vnd.eprints.data+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.epson.esf": {
+        source: "iana",
+        extensions: ["esf"]
+      },
+      "application/vnd.epson.msf": {
+        source: "iana",
+        extensions: ["msf"]
+      },
+      "application/vnd.epson.quickanime": {
+        source: "iana",
+        extensions: ["qam"]
+      },
+      "application/vnd.epson.salt": {
+        source: "iana",
+        extensions: ["slt"]
+      },
+      "application/vnd.epson.ssf": {
+        source: "iana",
+        extensions: ["ssf"]
+      },
+      "application/vnd.ericsson.quickcall": {
+        source: "iana"
+      },
+      "application/vnd.espass-espass+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.eszigno3+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["es3", "et3"]
+      },
+      "application/vnd.etsi.aoc+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.asic-e+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.etsi.asic-s+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.etsi.cug+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvcommand+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvdiscovery+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvprofile+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvsad-bc+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvsad-cod+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvsad-npvr+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvservice+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvsync+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvueprofile+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.mcid+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.mheg5": {
+        source: "iana"
+      },
+      "application/vnd.etsi.overload-control-policy-dataset+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.pstn+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.sci+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.simservs+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.timestamp-token": {
+        source: "iana"
+      },
+      "application/vnd.etsi.tsl+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.tsl.der": {
+        source: "iana"
+      },
+      "application/vnd.eu.kasparian.car+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.eudora.data": {
+        source: "iana"
+      },
+      "application/vnd.evolv.ecig.profile": {
+        source: "iana"
+      },
+      "application/vnd.evolv.ecig.settings": {
+        source: "iana"
+      },
+      "application/vnd.evolv.ecig.theme": {
+        source: "iana"
+      },
+      "application/vnd.exstream-empower+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.exstream-package": {
+        source: "iana"
+      },
+      "application/vnd.ezpix-album": {
+        source: "iana",
+        extensions: ["ez2"]
+      },
+      "application/vnd.ezpix-package": {
+        source: "iana",
+        extensions: ["ez3"]
+      },
+      "application/vnd.f-secure.mobile": {
+        source: "iana"
+      },
+      "application/vnd.familysearch.gedcom+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.fastcopy-disk-image": {
+        source: "iana"
+      },
+      "application/vnd.fdf": {
+        source: "iana",
+        extensions: ["fdf"]
+      },
+      "application/vnd.fdsn.mseed": {
+        source: "iana",
+        extensions: ["mseed"]
+      },
+      "application/vnd.fdsn.seed": {
+        source: "iana",
+        extensions: ["seed", "dataless"]
+      },
+      "application/vnd.ffsns": {
+        source: "iana"
+      },
+      "application/vnd.ficlab.flb+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.filmit.zfc": {
+        source: "iana"
+      },
+      "application/vnd.fints": {
+        source: "iana"
+      },
+      "application/vnd.firemonkeys.cloudcell": {
+        source: "iana"
+      },
+      "application/vnd.flographit": {
+        source: "iana",
+        extensions: ["gph"]
+      },
+      "application/vnd.fluxtime.clip": {
+        source: "iana",
+        extensions: ["ftc"]
+      },
+      "application/vnd.font-fontforge-sfd": {
+        source: "iana"
+      },
+      "application/vnd.framemaker": {
+        source: "iana",
+        extensions: ["fm", "frame", "maker", "book"]
+      },
+      "application/vnd.frogans.fnc": {
+        source: "iana",
+        extensions: ["fnc"]
+      },
+      "application/vnd.frogans.ltf": {
+        source: "iana",
+        extensions: ["ltf"]
+      },
+      "application/vnd.fsc.weblaunch": {
+        source: "iana",
+        extensions: ["fsc"]
+      },
+      "application/vnd.fujifilm.fb.docuworks": {
+        source: "iana"
+      },
+      "application/vnd.fujifilm.fb.docuworks.binder": {
+        source: "iana"
+      },
+      "application/vnd.fujifilm.fb.docuworks.container": {
+        source: "iana"
+      },
+      "application/vnd.fujifilm.fb.jfi+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.fujitsu.oasys": {
+        source: "iana",
+        extensions: ["oas"]
+      },
+      "application/vnd.fujitsu.oasys2": {
+        source: "iana",
+        extensions: ["oa2"]
+      },
+      "application/vnd.fujitsu.oasys3": {
+        source: "iana",
+        extensions: ["oa3"]
+      },
+      "application/vnd.fujitsu.oasysgp": {
+        source: "iana",
+        extensions: ["fg5"]
+      },
+      "application/vnd.fujitsu.oasysprs": {
+        source: "iana",
+        extensions: ["bh2"]
+      },
+      "application/vnd.fujixerox.art-ex": {
+        source: "iana"
+      },
+      "application/vnd.fujixerox.art4": {
+        source: "iana"
+      },
+      "application/vnd.fujixerox.ddd": {
+        source: "iana",
+        extensions: ["ddd"]
+      },
+      "application/vnd.fujixerox.docuworks": {
+        source: "iana",
+        extensions: ["xdw"]
+      },
+      "application/vnd.fujixerox.docuworks.binder": {
+        source: "iana",
+        extensions: ["xbd"]
+      },
+      "application/vnd.fujixerox.docuworks.container": {
+        source: "iana"
+      },
+      "application/vnd.fujixerox.hbpl": {
+        source: "iana"
+      },
+      "application/vnd.fut-misnet": {
+        source: "iana"
+      },
+      "application/vnd.futoin+cbor": {
+        source: "iana"
+      },
+      "application/vnd.futoin+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.fuzzysheet": {
+        source: "iana",
+        extensions: ["fzs"]
+      },
+      "application/vnd.genomatix.tuxedo": {
+        source: "iana",
+        extensions: ["txd"]
+      },
+      "application/vnd.gentics.grd+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.geo+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.geocube+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.geogebra.file": {
+        source: "iana",
+        extensions: ["ggb"]
+      },
+      "application/vnd.geogebra.slides": {
+        source: "iana"
+      },
+      "application/vnd.geogebra.tool": {
+        source: "iana",
+        extensions: ["ggt"]
+      },
+      "application/vnd.geometry-explorer": {
+        source: "iana",
+        extensions: ["gex", "gre"]
+      },
+      "application/vnd.geonext": {
+        source: "iana",
+        extensions: ["gxt"]
+      },
+      "application/vnd.geoplan": {
+        source: "iana",
+        extensions: ["g2w"]
+      },
+      "application/vnd.geospace": {
+        source: "iana",
+        extensions: ["g3w"]
+      },
+      "application/vnd.gerber": {
+        source: "iana"
+      },
+      "application/vnd.globalplatform.card-content-mgt": {
+        source: "iana"
+      },
+      "application/vnd.globalplatform.card-content-mgt-response": {
+        source: "iana"
+      },
+      "application/vnd.gmx": {
+        source: "iana",
+        extensions: ["gmx"]
+      },
+      "application/vnd.google-apps.document": {
+        compressible: false,
+        extensions: ["gdoc"]
+      },
+      "application/vnd.google-apps.presentation": {
+        compressible: false,
+        extensions: ["gslides"]
+      },
+      "application/vnd.google-apps.spreadsheet": {
+        compressible: false,
+        extensions: ["gsheet"]
+      },
+      "application/vnd.google-earth.kml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["kml"]
+      },
+      "application/vnd.google-earth.kmz": {
+        source: "iana",
+        compressible: false,
+        extensions: ["kmz"]
+      },
+      "application/vnd.gov.sk.e-form+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.gov.sk.e-form+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.gov.sk.xmldatacontainer+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.grafeq": {
+        source: "iana",
+        extensions: ["gqf", "gqs"]
+      },
+      "application/vnd.gridmp": {
+        source: "iana"
+      },
+      "application/vnd.groove-account": {
+        source: "iana",
+        extensions: ["gac"]
+      },
+      "application/vnd.groove-help": {
+        source: "iana",
+        extensions: ["ghf"]
+      },
+      "application/vnd.groove-identity-message": {
+        source: "iana",
+        extensions: ["gim"]
+      },
+      "application/vnd.groove-injector": {
+        source: "iana",
+        extensions: ["grv"]
+      },
+      "application/vnd.groove-tool-message": {
+        source: "iana",
+        extensions: ["gtm"]
+      },
+      "application/vnd.groove-tool-template": {
+        source: "iana",
+        extensions: ["tpl"]
+      },
+      "application/vnd.groove-vcard": {
+        source: "iana",
+        extensions: ["vcg"]
+      },
+      "application/vnd.hal+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.hal+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["hal"]
+      },
+      "application/vnd.handheld-entertainment+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["zmm"]
+      },
+      "application/vnd.hbci": {
+        source: "iana",
+        extensions: ["hbci"]
+      },
+      "application/vnd.hc+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.hcl-bireports": {
+        source: "iana"
+      },
+      "application/vnd.hdt": {
+        source: "iana"
+      },
+      "application/vnd.heroku+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.hhe.lesson-player": {
+        source: "iana",
+        extensions: ["les"]
+      },
+      "application/vnd.hl7cda+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/vnd.hl7v2+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/vnd.hp-hpgl": {
+        source: "iana",
+        extensions: ["hpgl"]
+      },
+      "application/vnd.hp-hpid": {
+        source: "iana",
+        extensions: ["hpid"]
+      },
+      "application/vnd.hp-hps": {
+        source: "iana",
+        extensions: ["hps"]
+      },
+      "application/vnd.hp-jlyt": {
+        source: "iana",
+        extensions: ["jlt"]
+      },
+      "application/vnd.hp-pcl": {
+        source: "iana",
+        extensions: ["pcl"]
+      },
+      "application/vnd.hp-pclxl": {
+        source: "iana",
+        extensions: ["pclxl"]
+      },
+      "application/vnd.httphone": {
+        source: "iana"
+      },
+      "application/vnd.hydrostatix.sof-data": {
+        source: "iana",
+        extensions: ["sfd-hdstx"]
+      },
+      "application/vnd.hyper+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.hyper-item+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.hyperdrive+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.hzn-3d-crossword": {
+        source: "iana"
+      },
+      "application/vnd.ibm.afplinedata": {
+        source: "iana"
+      },
+      "application/vnd.ibm.electronic-media": {
+        source: "iana"
+      },
+      "application/vnd.ibm.minipay": {
+        source: "iana",
+        extensions: ["mpy"]
+      },
+      "application/vnd.ibm.modcap": {
+        source: "iana",
+        extensions: ["afp", "listafp", "list3820"]
+      },
+      "application/vnd.ibm.rights-management": {
+        source: "iana",
+        extensions: ["irm"]
+      },
+      "application/vnd.ibm.secure-container": {
+        source: "iana",
+        extensions: ["sc"]
+      },
+      "application/vnd.iccprofile": {
+        source: "iana",
+        extensions: ["icc", "icm"]
+      },
+      "application/vnd.ieee.1905": {
+        source: "iana"
+      },
+      "application/vnd.igloader": {
+        source: "iana",
+        extensions: ["igl"]
+      },
+      "application/vnd.imagemeter.folder+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.imagemeter.image+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.immervision-ivp": {
+        source: "iana",
+        extensions: ["ivp"]
+      },
+      "application/vnd.immervision-ivu": {
+        source: "iana",
+        extensions: ["ivu"]
+      },
+      "application/vnd.ims.imsccv1p1": {
+        source: "iana"
+      },
+      "application/vnd.ims.imsccv1p2": {
+        source: "iana"
+      },
+      "application/vnd.ims.imsccv1p3": {
+        source: "iana"
+      },
+      "application/vnd.ims.lis.v2.result+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ims.lti.v2.toolconsumerprofile+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ims.lti.v2.toolproxy+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ims.lti.v2.toolproxy.id+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ims.lti.v2.toolsettings+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ims.lti.v2.toolsettings.simple+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.informedcontrol.rms+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.informix-visionary": {
+        source: "iana"
+      },
+      "application/vnd.infotech.project": {
+        source: "iana"
+      },
+      "application/vnd.infotech.project+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.innopath.wamp.notification": {
+        source: "iana"
+      },
+      "application/vnd.insors.igm": {
+        source: "iana",
+        extensions: ["igm"]
+      },
+      "application/vnd.intercon.formnet": {
+        source: "iana",
+        extensions: ["xpw", "xpx"]
+      },
+      "application/vnd.intergeo": {
+        source: "iana",
+        extensions: ["i2g"]
+      },
+      "application/vnd.intertrust.digibox": {
+        source: "iana"
+      },
+      "application/vnd.intertrust.nncp": {
+        source: "iana"
+      },
+      "application/vnd.intu.qbo": {
+        source: "iana",
+        extensions: ["qbo"]
+      },
+      "application/vnd.intu.qfx": {
+        source: "iana",
+        extensions: ["qfx"]
+      },
+      "application/vnd.iptc.g2.catalogitem+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.iptc.g2.conceptitem+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.iptc.g2.knowledgeitem+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.iptc.g2.newsitem+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.iptc.g2.newsmessage+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.iptc.g2.packageitem+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.iptc.g2.planningitem+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ipunplugged.rcprofile": {
+        source: "iana",
+        extensions: ["rcprofile"]
+      },
+      "application/vnd.irepository.package+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["irp"]
+      },
+      "application/vnd.is-xpr": {
+        source: "iana",
+        extensions: ["xpr"]
+      },
+      "application/vnd.isac.fcs": {
+        source: "iana",
+        extensions: ["fcs"]
+      },
+      "application/vnd.iso11783-10+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.jam": {
+        source: "iana",
+        extensions: ["jam"]
+      },
+      "application/vnd.japannet-directory-service": {
+        source: "iana"
+      },
+      "application/vnd.japannet-jpnstore-wakeup": {
+        source: "iana"
+      },
+      "application/vnd.japannet-payment-wakeup": {
+        source: "iana"
+      },
+      "application/vnd.japannet-registration": {
+        source: "iana"
+      },
+      "application/vnd.japannet-registration-wakeup": {
+        source: "iana"
+      },
+      "application/vnd.japannet-setstore-wakeup": {
+        source: "iana"
+      },
+      "application/vnd.japannet-verification": {
+        source: "iana"
+      },
+      "application/vnd.japannet-verification-wakeup": {
+        source: "iana"
+      },
+      "application/vnd.jcp.javame.midlet-rms": {
+        source: "iana",
+        extensions: ["rms"]
+      },
+      "application/vnd.jisp": {
+        source: "iana",
+        extensions: ["jisp"]
+      },
+      "application/vnd.joost.joda-archive": {
+        source: "iana",
+        extensions: ["joda"]
+      },
+      "application/vnd.jsk.isdn-ngn": {
+        source: "iana"
+      },
+      "application/vnd.kahootz": {
+        source: "iana",
+        extensions: ["ktz", "ktr"]
+      },
+      "application/vnd.kde.karbon": {
+        source: "iana",
+        extensions: ["karbon"]
+      },
+      "application/vnd.kde.kchart": {
+        source: "iana",
+        extensions: ["chrt"]
+      },
+      "application/vnd.kde.kformula": {
+        source: "iana",
+        extensions: ["kfo"]
+      },
+      "application/vnd.kde.kivio": {
+        source: "iana",
+        extensions: ["flw"]
+      },
+      "application/vnd.kde.kontour": {
+        source: "iana",
+        extensions: ["kon"]
+      },
+      "application/vnd.kde.kpresenter": {
+        source: "iana",
+        extensions: ["kpr", "kpt"]
+      },
+      "application/vnd.kde.kspread": {
+        source: "iana",
+        extensions: ["ksp"]
+      },
+      "application/vnd.kde.kword": {
+        source: "iana",
+        extensions: ["kwd", "kwt"]
+      },
+      "application/vnd.kenameaapp": {
+        source: "iana",
+        extensions: ["htke"]
+      },
+      "application/vnd.kidspiration": {
+        source: "iana",
+        extensions: ["kia"]
+      },
+      "application/vnd.kinar": {
+        source: "iana",
+        extensions: ["kne", "knp"]
+      },
+      "application/vnd.koan": {
+        source: "iana",
+        extensions: ["skp", "skd", "skt", "skm"]
+      },
+      "application/vnd.kodak-descriptor": {
+        source: "iana",
+        extensions: ["sse"]
+      },
+      "application/vnd.las": {
+        source: "iana"
+      },
+      "application/vnd.las.las+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.las.las+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["lasxml"]
+      },
+      "application/vnd.laszip": {
+        source: "iana"
+      },
+      "application/vnd.leap+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.liberty-request+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.llamagraphics.life-balance.desktop": {
+        source: "iana",
+        extensions: ["lbd"]
+      },
+      "application/vnd.llamagraphics.life-balance.exchange+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["lbe"]
+      },
+      "application/vnd.logipipe.circuit+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.loom": {
+        source: "iana"
+      },
+      "application/vnd.lotus-1-2-3": {
+        source: "iana",
+        extensions: ["123"]
+      },
+      "application/vnd.lotus-approach": {
+        source: "iana",
+        extensions: ["apr"]
+      },
+      "application/vnd.lotus-freelance": {
+        source: "iana",
+        extensions: ["pre"]
+      },
+      "application/vnd.lotus-notes": {
+        source: "iana",
+        extensions: ["nsf"]
+      },
+      "application/vnd.lotus-organizer": {
+        source: "iana",
+        extensions: ["org"]
+      },
+      "application/vnd.lotus-screencam": {
+        source: "iana",
+        extensions: ["scm"]
+      },
+      "application/vnd.lotus-wordpro": {
+        source: "iana",
+        extensions: ["lwp"]
+      },
+      "application/vnd.macports.portpkg": {
+        source: "iana",
+        extensions: ["portpkg"]
+      },
+      "application/vnd.mapbox-vector-tile": {
+        source: "iana",
+        extensions: ["mvt"]
+      },
+      "application/vnd.marlin.drm.actiontoken+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.marlin.drm.conftoken+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.marlin.drm.license+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.marlin.drm.mdcf": {
+        source: "iana"
+      },
+      "application/vnd.mason+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.maxar.archive.3tz+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.maxmind.maxmind-db": {
+        source: "iana"
+      },
+      "application/vnd.mcd": {
+        source: "iana",
+        extensions: ["mcd"]
+      },
+      "application/vnd.medcalcdata": {
+        source: "iana",
+        extensions: ["mc1"]
+      },
+      "application/vnd.mediastation.cdkey": {
+        source: "iana",
+        extensions: ["cdkey"]
+      },
+      "application/vnd.meridian-slingshot": {
+        source: "iana"
+      },
+      "application/vnd.mfer": {
+        source: "iana",
+        extensions: ["mwf"]
+      },
+      "application/vnd.mfmp": {
+        source: "iana",
+        extensions: ["mfm"]
+      },
+      "application/vnd.micro+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.micrografx.flo": {
+        source: "iana",
+        extensions: ["flo"]
+      },
+      "application/vnd.micrografx.igx": {
+        source: "iana",
+        extensions: ["igx"]
+      },
+      "application/vnd.microsoft.portable-executable": {
+        source: "iana"
+      },
+      "application/vnd.microsoft.windows.thumbnail-cache": {
+        source: "iana"
+      },
+      "application/vnd.miele+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.mif": {
+        source: "iana",
+        extensions: ["mif"]
+      },
+      "application/vnd.minisoft-hp3000-save": {
+        source: "iana"
+      },
+      "application/vnd.mitsubishi.misty-guard.trustweb": {
+        source: "iana"
+      },
+      "application/vnd.mobius.daf": {
+        source: "iana",
+        extensions: ["daf"]
+      },
+      "application/vnd.mobius.dis": {
+        source: "iana",
+        extensions: ["dis"]
+      },
+      "application/vnd.mobius.mbk": {
+        source: "iana",
+        extensions: ["mbk"]
+      },
+      "application/vnd.mobius.mqy": {
+        source: "iana",
+        extensions: ["mqy"]
+      },
+      "application/vnd.mobius.msl": {
+        source: "iana",
+        extensions: ["msl"]
+      },
+      "application/vnd.mobius.plc": {
+        source: "iana",
+        extensions: ["plc"]
+      },
+      "application/vnd.mobius.txf": {
+        source: "iana",
+        extensions: ["txf"]
+      },
+      "application/vnd.mophun.application": {
+        source: "iana",
+        extensions: ["mpn"]
+      },
+      "application/vnd.mophun.certificate": {
+        source: "iana",
+        extensions: ["mpc"]
+      },
+      "application/vnd.motorola.flexsuite": {
+        source: "iana"
+      },
+      "application/vnd.motorola.flexsuite.adsi": {
+        source: "iana"
+      },
+      "application/vnd.motorola.flexsuite.fis": {
+        source: "iana"
+      },
+      "application/vnd.motorola.flexsuite.gotap": {
+        source: "iana"
+      },
+      "application/vnd.motorola.flexsuite.kmr": {
+        source: "iana"
+      },
+      "application/vnd.motorola.flexsuite.ttc": {
+        source: "iana"
+      },
+      "application/vnd.motorola.flexsuite.wem": {
+        source: "iana"
+      },
+      "application/vnd.motorola.iprm": {
+        source: "iana"
+      },
+      "application/vnd.mozilla.xul+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xul"]
+      },
+      "application/vnd.ms-3mfdocument": {
+        source: "iana"
+      },
+      "application/vnd.ms-artgalry": {
+        source: "iana",
+        extensions: ["cil"]
+      },
+      "application/vnd.ms-asf": {
+        source: "iana"
+      },
+      "application/vnd.ms-cab-compressed": {
+        source: "iana",
+        extensions: ["cab"]
+      },
+      "application/vnd.ms-color.iccprofile": {
+        source: "apache"
+      },
+      "application/vnd.ms-excel": {
+        source: "iana",
+        compressible: false,
+        extensions: ["xls", "xlm", "xla", "xlc", "xlt", "xlw"]
+      },
+      "application/vnd.ms-excel.addin.macroenabled.12": {
+        source: "iana",
+        extensions: ["xlam"]
+      },
+      "application/vnd.ms-excel.sheet.binary.macroenabled.12": {
+        source: "iana",
+        extensions: ["xlsb"]
+      },
+      "application/vnd.ms-excel.sheet.macroenabled.12": {
+        source: "iana",
+        extensions: ["xlsm"]
+      },
+      "application/vnd.ms-excel.template.macroenabled.12": {
+        source: "iana",
+        extensions: ["xltm"]
+      },
+      "application/vnd.ms-fontobject": {
+        source: "iana",
+        compressible: true,
+        extensions: ["eot"]
+      },
+      "application/vnd.ms-htmlhelp": {
+        source: "iana",
+        extensions: ["chm"]
+      },
+      "application/vnd.ms-ims": {
+        source: "iana",
+        extensions: ["ims"]
+      },
+      "application/vnd.ms-lrm": {
+        source: "iana",
+        extensions: ["lrm"]
+      },
+      "application/vnd.ms-office.activex+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ms-officetheme": {
+        source: "iana",
+        extensions: ["thmx"]
+      },
+      "application/vnd.ms-opentype": {
+        source: "apache",
+        compressible: true
+      },
+      "application/vnd.ms-outlook": {
+        compressible: false,
+        extensions: ["msg"]
+      },
+      "application/vnd.ms-package.obfuscated-opentype": {
+        source: "apache"
+      },
+      "application/vnd.ms-pki.seccat": {
+        source: "apache",
+        extensions: ["cat"]
+      },
+      "application/vnd.ms-pki.stl": {
+        source: "apache",
+        extensions: ["stl"]
+      },
+      "application/vnd.ms-playready.initiator+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ms-powerpoint": {
+        source: "iana",
+        compressible: false,
+        extensions: ["ppt", "pps", "pot"]
+      },
+      "application/vnd.ms-powerpoint.addin.macroenabled.12": {
+        source: "iana",
+        extensions: ["ppam"]
+      },
+      "application/vnd.ms-powerpoint.presentation.macroenabled.12": {
+        source: "iana",
+        extensions: ["pptm"]
+      },
+      "application/vnd.ms-powerpoint.slide.macroenabled.12": {
+        source: "iana",
+        extensions: ["sldm"]
+      },
+      "application/vnd.ms-powerpoint.slideshow.macroenabled.12": {
+        source: "iana",
+        extensions: ["ppsm"]
+      },
+      "application/vnd.ms-powerpoint.template.macroenabled.12": {
+        source: "iana",
+        extensions: ["potm"]
+      },
+      "application/vnd.ms-printdevicecapabilities+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ms-printing.printticket+xml": {
+        source: "apache",
+        compressible: true
+      },
+      "application/vnd.ms-printschematicket+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ms-project": {
+        source: "iana",
+        extensions: ["mpp", "mpt"]
+      },
+      "application/vnd.ms-tnef": {
+        source: "iana"
+      },
+      "application/vnd.ms-windows.devicepairing": {
+        source: "iana"
+      },
+      "application/vnd.ms-windows.nwprinting.oob": {
+        source: "iana"
+      },
+      "application/vnd.ms-windows.printerpairing": {
+        source: "iana"
+      },
+      "application/vnd.ms-windows.wsd.oob": {
+        source: "iana"
+      },
+      "application/vnd.ms-wmdrm.lic-chlg-req": {
+        source: "iana"
+      },
+      "application/vnd.ms-wmdrm.lic-resp": {
+        source: "iana"
+      },
+      "application/vnd.ms-wmdrm.meter-chlg-req": {
+        source: "iana"
+      },
+      "application/vnd.ms-wmdrm.meter-resp": {
+        source: "iana"
+      },
+      "application/vnd.ms-word.document.macroenabled.12": {
+        source: "iana",
+        extensions: ["docm"]
+      },
+      "application/vnd.ms-word.template.macroenabled.12": {
+        source: "iana",
+        extensions: ["dotm"]
+      },
+      "application/vnd.ms-works": {
+        source: "iana",
+        extensions: ["wps", "wks", "wcm", "wdb"]
+      },
+      "application/vnd.ms-wpl": {
+        source: "iana",
+        extensions: ["wpl"]
+      },
+      "application/vnd.ms-xpsdocument": {
+        source: "iana",
+        compressible: false,
+        extensions: ["xps"]
+      },
+      "application/vnd.msa-disk-image": {
+        source: "iana"
+      },
+      "application/vnd.mseq": {
+        source: "iana",
+        extensions: ["mseq"]
+      },
+      "application/vnd.msign": {
+        source: "iana"
+      },
+      "application/vnd.multiad.creator": {
+        source: "iana"
+      },
+      "application/vnd.multiad.creator.cif": {
+        source: "iana"
+      },
+      "application/vnd.music-niff": {
+        source: "iana"
+      },
+      "application/vnd.musician": {
+        source: "iana",
+        extensions: ["mus"]
+      },
+      "application/vnd.muvee.style": {
+        source: "iana",
+        extensions: ["msty"]
+      },
+      "application/vnd.mynfc": {
+        source: "iana",
+        extensions: ["taglet"]
+      },
+      "application/vnd.nacamar.ybrid+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ncd.control": {
+        source: "iana"
+      },
+      "application/vnd.ncd.reference": {
+        source: "iana"
+      },
+      "application/vnd.nearst.inv+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.nebumind.line": {
+        source: "iana"
+      },
+      "application/vnd.nervana": {
+        source: "iana"
+      },
+      "application/vnd.netfpx": {
+        source: "iana"
+      },
+      "application/vnd.neurolanguage.nlu": {
+        source: "iana",
+        extensions: ["nlu"]
+      },
+      "application/vnd.nimn": {
+        source: "iana"
+      },
+      "application/vnd.nintendo.nitro.rom": {
+        source: "iana"
+      },
+      "application/vnd.nintendo.snes.rom": {
+        source: "iana"
+      },
+      "application/vnd.nitf": {
+        source: "iana",
+        extensions: ["ntf", "nitf"]
+      },
+      "application/vnd.noblenet-directory": {
+        source: "iana",
+        extensions: ["nnd"]
+      },
+      "application/vnd.noblenet-sealer": {
+        source: "iana",
+        extensions: ["nns"]
+      },
+      "application/vnd.noblenet-web": {
+        source: "iana",
+        extensions: ["nnw"]
+      },
+      "application/vnd.nokia.catalogs": {
+        source: "iana"
+      },
+      "application/vnd.nokia.conml+wbxml": {
+        source: "iana"
+      },
+      "application/vnd.nokia.conml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.nokia.iptv.config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.nokia.isds-radio-presets": {
+        source: "iana"
+      },
+      "application/vnd.nokia.landmark+wbxml": {
+        source: "iana"
+      },
+      "application/vnd.nokia.landmark+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.nokia.landmarkcollection+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.nokia.n-gage.ac+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ac"]
+      },
+      "application/vnd.nokia.n-gage.data": {
+        source: "iana",
+        extensions: ["ngdat"]
+      },
+      "application/vnd.nokia.n-gage.symbian.install": {
+        source: "iana",
+        extensions: ["n-gage"]
+      },
+      "application/vnd.nokia.ncd": {
+        source: "iana"
+      },
+      "application/vnd.nokia.pcd+wbxml": {
+        source: "iana"
+      },
+      "application/vnd.nokia.pcd+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.nokia.radio-preset": {
+        source: "iana",
+        extensions: ["rpst"]
+      },
+      "application/vnd.nokia.radio-presets": {
+        source: "iana",
+        extensions: ["rpss"]
+      },
+      "application/vnd.novadigm.edm": {
+        source: "iana",
+        extensions: ["edm"]
+      },
+      "application/vnd.novadigm.edx": {
+        source: "iana",
+        extensions: ["edx"]
+      },
+      "application/vnd.novadigm.ext": {
+        source: "iana",
+        extensions: ["ext"]
+      },
+      "application/vnd.ntt-local.content-share": {
+        source: "iana"
+      },
+      "application/vnd.ntt-local.file-transfer": {
+        source: "iana"
+      },
+      "application/vnd.ntt-local.ogw_remote-access": {
+        source: "iana"
+      },
+      "application/vnd.ntt-local.sip-ta_remote": {
+        source: "iana"
+      },
+      "application/vnd.ntt-local.sip-ta_tcp_stream": {
+        source: "iana"
+      },
+      "application/vnd.oasis.opendocument.chart": {
+        source: "iana",
+        extensions: ["odc"]
+      },
+      "application/vnd.oasis.opendocument.chart-template": {
+        source: "iana",
+        extensions: ["otc"]
+      },
+      "application/vnd.oasis.opendocument.database": {
+        source: "iana",
+        extensions: ["odb"]
+      },
+      "application/vnd.oasis.opendocument.formula": {
+        source: "iana",
+        extensions: ["odf"]
+      },
+      "application/vnd.oasis.opendocument.formula-template": {
+        source: "iana",
+        extensions: ["odft"]
+      },
+      "application/vnd.oasis.opendocument.graphics": {
+        source: "iana",
+        compressible: false,
+        extensions: ["odg"]
+      },
+      "application/vnd.oasis.opendocument.graphics-template": {
+        source: "iana",
+        extensions: ["otg"]
+      },
+      "application/vnd.oasis.opendocument.image": {
+        source: "iana",
+        extensions: ["odi"]
+      },
+      "application/vnd.oasis.opendocument.image-template": {
+        source: "iana",
+        extensions: ["oti"]
+      },
+      "application/vnd.oasis.opendocument.presentation": {
+        source: "iana",
+        compressible: false,
+        extensions: ["odp"]
+      },
+      "application/vnd.oasis.opendocument.presentation-template": {
+        source: "iana",
+        extensions: ["otp"]
+      },
+      "application/vnd.oasis.opendocument.spreadsheet": {
+        source: "iana",
+        compressible: false,
+        extensions: ["ods"]
+      },
+      "application/vnd.oasis.opendocument.spreadsheet-template": {
+        source: "iana",
+        extensions: ["ots"]
+      },
+      "application/vnd.oasis.opendocument.text": {
+        source: "iana",
+        compressible: false,
+        extensions: ["odt"]
+      },
+      "application/vnd.oasis.opendocument.text-master": {
+        source: "iana",
+        extensions: ["odm"]
+      },
+      "application/vnd.oasis.opendocument.text-template": {
+        source: "iana",
+        extensions: ["ott"]
+      },
+      "application/vnd.oasis.opendocument.text-web": {
+        source: "iana",
+        extensions: ["oth"]
+      },
+      "application/vnd.obn": {
+        source: "iana"
+      },
+      "application/vnd.ocf+cbor": {
+        source: "iana"
+      },
+      "application/vnd.oci.image.manifest.v1+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oftn.l10n+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.contentaccessdownload+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.contentaccessstreaming+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.cspg-hexbinary": {
+        source: "iana"
+      },
+      "application/vnd.oipf.dae.svg+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.dae.xhtml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.mippvcontrolmessage+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.pae.gem": {
+        source: "iana"
+      },
+      "application/vnd.oipf.spdiscovery+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.spdlist+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.ueprofile+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.userprofile+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.olpc-sugar": {
+        source: "iana",
+        extensions: ["xo"]
+      },
+      "application/vnd.oma-scws-config": {
+        source: "iana"
+      },
+      "application/vnd.oma-scws-http-request": {
+        source: "iana"
+      },
+      "application/vnd.oma-scws-http-response": {
+        source: "iana"
+      },
+      "application/vnd.oma.bcast.associated-procedure-parameter+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.bcast.drm-trigger+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.bcast.imd+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.bcast.ltkm": {
+        source: "iana"
+      },
+      "application/vnd.oma.bcast.notification+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.bcast.provisioningtrigger": {
+        source: "iana"
+      },
+      "application/vnd.oma.bcast.sgboot": {
+        source: "iana"
+      },
+      "application/vnd.oma.bcast.sgdd+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.bcast.sgdu": {
+        source: "iana"
+      },
+      "application/vnd.oma.bcast.simple-symbol-container": {
+        source: "iana"
+      },
+      "application/vnd.oma.bcast.smartcard-trigger+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.bcast.sprov+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.bcast.stkm": {
+        source: "iana"
+      },
+      "application/vnd.oma.cab-address-book+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.cab-feature-handler+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.cab-pcc+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.cab-subs-invite+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.cab-user-prefs+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.dcd": {
+        source: "iana"
+      },
+      "application/vnd.oma.dcdc": {
+        source: "iana"
+      },
+      "application/vnd.oma.dd2+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["dd2"]
+      },
+      "application/vnd.oma.drm.risd+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.group-usage-list+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.lwm2m+cbor": {
+        source: "iana"
+      },
+      "application/vnd.oma.lwm2m+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.lwm2m+tlv": {
+        source: "iana"
+      },
+      "application/vnd.oma.pal+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.poc.detailed-progress-report+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.poc.final-report+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.poc.groups+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.poc.invocation-descriptor+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.poc.optimized-progress-report+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.push": {
+        source: "iana"
+      },
+      "application/vnd.oma.scidm.messages+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.xcap-directory+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.omads-email+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/vnd.omads-file+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/vnd.omads-folder+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/vnd.omaloc-supl-init": {
+        source: "iana"
+      },
+      "application/vnd.onepager": {
+        source: "iana"
+      },
+      "application/vnd.onepagertamp": {
+        source: "iana"
+      },
+      "application/vnd.onepagertamx": {
+        source: "iana"
+      },
+      "application/vnd.onepagertat": {
+        source: "iana"
+      },
+      "application/vnd.onepagertatp": {
+        source: "iana"
+      },
+      "application/vnd.onepagertatx": {
+        source: "iana"
+      },
+      "application/vnd.openblox.game+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["obgx"]
+      },
+      "application/vnd.openblox.game-binary": {
+        source: "iana"
+      },
+      "application/vnd.openeye.oeb": {
+        source: "iana"
+      },
+      "application/vnd.openofficeorg.extension": {
+        source: "apache",
+        extensions: ["oxt"]
+      },
+      "application/vnd.openstreetmap.data+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["osm"]
+      },
+      "application/vnd.opentimestamps.ots": {
+        source: "iana"
+      },
+      "application/vnd.openxmlformats-officedocument.custom-properties+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.customxmlproperties+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.drawing+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.drawingml.chart+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.drawingml.chartshapes+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.drawingml.diagramcolors+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.drawingml.diagramdata+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.drawingml.diagramlayout+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.drawingml.diagramstyle+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.extended-properties+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.commentauthors+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.comments+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.handoutmaster+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.notesmaster+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.notesslide+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
+        source: "iana",
+        compressible: false,
+        extensions: ["pptx"]
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.presprops+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.slide": {
+        source: "iana",
+        extensions: ["sldx"]
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.slide+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.slidelayout+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.slidemaster+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.slideshow": {
+        source: "iana",
+        extensions: ["ppsx"]
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.slideshow.main+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.slideupdateinfo+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.tablestyles+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.tags+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.template": {
+        source: "iana",
+        extensions: ["potx"]
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.template.main+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.viewprops+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.calcchain+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.dialogsheet+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.externallink+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotcachedefinition+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotcacherecords+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.pivottable+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.querytable+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.revisionheaders+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.revisionlog+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sharedstrings+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+        source: "iana",
+        compressible: false,
+        extensions: ["xlsx"]
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheetmetadata+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.tablesinglecells+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.template": {
+        source: "iana",
+        extensions: ["xltx"]
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.template.main+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.usernames+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.volatiledependencies+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.theme+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.themeoverride+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.vmldrawing": {
+        source: "iana"
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+        source: "iana",
+        compressible: false,
+        extensions: ["docx"]
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document.glossary+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.fonttable+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.template": {
+        source: "iana",
+        extensions: ["dotx"]
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.websettings+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-package.core-properties+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-package.digital-signature-xmlsignature+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-package.relationships+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oracle.resource+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.orange.indata": {
+        source: "iana"
+      },
+      "application/vnd.osa.netdeploy": {
+        source: "iana"
+      },
+      "application/vnd.osgeo.mapguide.package": {
+        source: "iana",
+        extensions: ["mgp"]
+      },
+      "application/vnd.osgi.bundle": {
+        source: "iana"
+      },
+      "application/vnd.osgi.dp": {
+        source: "iana",
+        extensions: ["dp"]
+      },
+      "application/vnd.osgi.subsystem": {
+        source: "iana",
+        extensions: ["esa"]
+      },
+      "application/vnd.otps.ct-kip+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oxli.countgraph": {
+        source: "iana"
+      },
+      "application/vnd.pagerduty+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.palm": {
+        source: "iana",
+        extensions: ["pdb", "pqa", "oprc"]
+      },
+      "application/vnd.panoply": {
+        source: "iana"
+      },
+      "application/vnd.paos.xml": {
+        source: "iana"
+      },
+      "application/vnd.patentdive": {
+        source: "iana"
+      },
+      "application/vnd.patientecommsdoc": {
+        source: "iana"
+      },
+      "application/vnd.pawaafile": {
+        source: "iana",
+        extensions: ["paw"]
+      },
+      "application/vnd.pcos": {
+        source: "iana"
+      },
+      "application/vnd.pg.format": {
+        source: "iana",
+        extensions: ["str"]
+      },
+      "application/vnd.pg.osasli": {
+        source: "iana",
+        extensions: ["ei6"]
+      },
+      "application/vnd.piaccess.application-licence": {
+        source: "iana"
+      },
+      "application/vnd.picsel": {
+        source: "iana",
+        extensions: ["efif"]
+      },
+      "application/vnd.pmi.widget": {
+        source: "iana",
+        extensions: ["wg"]
+      },
+      "application/vnd.poc.group-advertisement+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.pocketlearn": {
+        source: "iana",
+        extensions: ["plf"]
+      },
+      "application/vnd.powerbuilder6": {
+        source: "iana",
+        extensions: ["pbd"]
+      },
+      "application/vnd.powerbuilder6-s": {
+        source: "iana"
+      },
+      "application/vnd.powerbuilder7": {
+        source: "iana"
+      },
+      "application/vnd.powerbuilder7-s": {
+        source: "iana"
+      },
+      "application/vnd.powerbuilder75": {
+        source: "iana"
+      },
+      "application/vnd.powerbuilder75-s": {
+        source: "iana"
+      },
+      "application/vnd.preminet": {
+        source: "iana"
+      },
+      "application/vnd.previewsystems.box": {
+        source: "iana",
+        extensions: ["box"]
+      },
+      "application/vnd.proteus.magazine": {
+        source: "iana",
+        extensions: ["mgz"]
+      },
+      "application/vnd.psfs": {
+        source: "iana"
+      },
+      "application/vnd.publishare-delta-tree": {
+        source: "iana",
+        extensions: ["qps"]
+      },
+      "application/vnd.pvi.ptid1": {
+        source: "iana",
+        extensions: ["ptid"]
+      },
+      "application/vnd.pwg-multiplexed": {
+        source: "iana"
+      },
+      "application/vnd.pwg-xhtml-print+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.qualcomm.brew-app-res": {
+        source: "iana"
+      },
+      "application/vnd.quarantainenet": {
+        source: "iana"
+      },
+      "application/vnd.quark.quarkxpress": {
+        source: "iana",
+        extensions: ["qxd", "qxt", "qwd", "qwt", "qxl", "qxb"]
+      },
+      "application/vnd.quobject-quoxdocument": {
+        source: "iana"
+      },
+      "application/vnd.radisys.moml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-audit+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-audit-conf+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-audit-conn+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-audit-dialog+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-audit-stream+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-conf+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-dialog+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-dialog-base+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-dialog-fax-detect+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-dialog-fax-sendrecv+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-dialog-group+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-dialog-speech+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-dialog-transform+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.rainstor.data": {
+        source: "iana"
+      },
+      "application/vnd.rapid": {
+        source: "iana"
+      },
+      "application/vnd.rar": {
+        source: "iana",
+        extensions: ["rar"]
+      },
+      "application/vnd.realvnc.bed": {
+        source: "iana",
+        extensions: ["bed"]
+      },
+      "application/vnd.recordare.musicxml": {
+        source: "iana",
+        extensions: ["mxl"]
+      },
+      "application/vnd.recordare.musicxml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["musicxml"]
+      },
+      "application/vnd.renlearn.rlprint": {
+        source: "iana"
+      },
+      "application/vnd.resilient.logic": {
+        source: "iana"
+      },
+      "application/vnd.restful+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.rig.cryptonote": {
+        source: "iana",
+        extensions: ["cryptonote"]
+      },
+      "application/vnd.rim.cod": {
+        source: "apache",
+        extensions: ["cod"]
+      },
+      "application/vnd.rn-realmedia": {
+        source: "apache",
+        extensions: ["rm"]
+      },
+      "application/vnd.rn-realmedia-vbr": {
+        source: "apache",
+        extensions: ["rmvb"]
+      },
+      "application/vnd.route66.link66+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["link66"]
+      },
+      "application/vnd.rs-274x": {
+        source: "iana"
+      },
+      "application/vnd.ruckus.download": {
+        source: "iana"
+      },
+      "application/vnd.s3sms": {
+        source: "iana"
+      },
+      "application/vnd.sailingtracker.track": {
+        source: "iana",
+        extensions: ["st"]
+      },
+      "application/vnd.sar": {
+        source: "iana"
+      },
+      "application/vnd.sbm.cid": {
+        source: "iana"
+      },
+      "application/vnd.sbm.mid2": {
+        source: "iana"
+      },
+      "application/vnd.scribus": {
+        source: "iana"
+      },
+      "application/vnd.sealed.3df": {
+        source: "iana"
+      },
+      "application/vnd.sealed.csf": {
+        source: "iana"
+      },
+      "application/vnd.sealed.doc": {
+        source: "iana"
+      },
+      "application/vnd.sealed.eml": {
+        source: "iana"
+      },
+      "application/vnd.sealed.mht": {
+        source: "iana"
+      },
+      "application/vnd.sealed.net": {
+        source: "iana"
+      },
+      "application/vnd.sealed.ppt": {
+        source: "iana"
+      },
+      "application/vnd.sealed.tiff": {
+        source: "iana"
+      },
+      "application/vnd.sealed.xls": {
+        source: "iana"
+      },
+      "application/vnd.sealedmedia.softseal.html": {
+        source: "iana"
+      },
+      "application/vnd.sealedmedia.softseal.pdf": {
+        source: "iana"
+      },
+      "application/vnd.seemail": {
+        source: "iana",
+        extensions: ["see"]
+      },
+      "application/vnd.seis+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.sema": {
+        source: "iana",
+        extensions: ["sema"]
+      },
+      "application/vnd.semd": {
+        source: "iana",
+        extensions: ["semd"]
+      },
+      "application/vnd.semf": {
+        source: "iana",
+        extensions: ["semf"]
+      },
+      "application/vnd.shade-save-file": {
+        source: "iana"
+      },
+      "application/vnd.shana.informed.formdata": {
+        source: "iana",
+        extensions: ["ifm"]
+      },
+      "application/vnd.shana.informed.formtemplate": {
+        source: "iana",
+        extensions: ["itp"]
+      },
+      "application/vnd.shana.informed.interchange": {
+        source: "iana",
+        extensions: ["iif"]
+      },
+      "application/vnd.shana.informed.package": {
+        source: "iana",
+        extensions: ["ipk"]
+      },
+      "application/vnd.shootproof+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.shopkick+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.shp": {
+        source: "iana"
+      },
+      "application/vnd.shx": {
+        source: "iana"
+      },
+      "application/vnd.sigrok.session": {
+        source: "iana"
+      },
+      "application/vnd.simtech-mindmapper": {
+        source: "iana",
+        extensions: ["twd", "twds"]
+      },
+      "application/vnd.siren+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.smaf": {
+        source: "iana",
+        extensions: ["mmf"]
+      },
+      "application/vnd.smart.notebook": {
+        source: "iana"
+      },
+      "application/vnd.smart.teacher": {
+        source: "iana",
+        extensions: ["teacher"]
+      },
+      "application/vnd.snesdev-page-table": {
+        source: "iana"
+      },
+      "application/vnd.software602.filler.form+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["fo"]
+      },
+      "application/vnd.software602.filler.form-xml-zip": {
+        source: "iana"
+      },
+      "application/vnd.solent.sdkm+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["sdkm", "sdkd"]
+      },
+      "application/vnd.spotfire.dxp": {
+        source: "iana",
+        extensions: ["dxp"]
+      },
+      "application/vnd.spotfire.sfs": {
+        source: "iana",
+        extensions: ["sfs"]
+      },
+      "application/vnd.sqlite3": {
+        source: "iana"
+      },
+      "application/vnd.sss-cod": {
+        source: "iana"
+      },
+      "application/vnd.sss-dtf": {
+        source: "iana"
+      },
+      "application/vnd.sss-ntf": {
+        source: "iana"
+      },
+      "application/vnd.stardivision.calc": {
+        source: "apache",
+        extensions: ["sdc"]
+      },
+      "application/vnd.stardivision.draw": {
+        source: "apache",
+        extensions: ["sda"]
+      },
+      "application/vnd.stardivision.impress": {
+        source: "apache",
+        extensions: ["sdd"]
+      },
+      "application/vnd.stardivision.math": {
+        source: "apache",
+        extensions: ["smf"]
+      },
+      "application/vnd.stardivision.writer": {
+        source: "apache",
+        extensions: ["sdw", "vor"]
+      },
+      "application/vnd.stardivision.writer-global": {
+        source: "apache",
+        extensions: ["sgl"]
+      },
+      "application/vnd.stepmania.package": {
+        source: "iana",
+        extensions: ["smzip"]
+      },
+      "application/vnd.stepmania.stepchart": {
+        source: "iana",
+        extensions: ["sm"]
+      },
+      "application/vnd.street-stream": {
+        source: "iana"
+      },
+      "application/vnd.sun.wadl+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["wadl"]
+      },
+      "application/vnd.sun.xml.calc": {
+        source: "apache",
+        extensions: ["sxc"]
+      },
+      "application/vnd.sun.xml.calc.template": {
+        source: "apache",
+        extensions: ["stc"]
+      },
+      "application/vnd.sun.xml.draw": {
+        source: "apache",
+        extensions: ["sxd"]
+      },
+      "application/vnd.sun.xml.draw.template": {
+        source: "apache",
+        extensions: ["std"]
+      },
+      "application/vnd.sun.xml.impress": {
+        source: "apache",
+        extensions: ["sxi"]
+      },
+      "application/vnd.sun.xml.impress.template": {
+        source: "apache",
+        extensions: ["sti"]
+      },
+      "application/vnd.sun.xml.math": {
+        source: "apache",
+        extensions: ["sxm"]
+      },
+      "application/vnd.sun.xml.writer": {
+        source: "apache",
+        extensions: ["sxw"]
+      },
+      "application/vnd.sun.xml.writer.global": {
+        source: "apache",
+        extensions: ["sxg"]
+      },
+      "application/vnd.sun.xml.writer.template": {
+        source: "apache",
+        extensions: ["stw"]
+      },
+      "application/vnd.sus-calendar": {
+        source: "iana",
+        extensions: ["sus", "susp"]
+      },
+      "application/vnd.svd": {
+        source: "iana",
+        extensions: ["svd"]
+      },
+      "application/vnd.swiftview-ics": {
+        source: "iana"
+      },
+      "application/vnd.sycle+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.syft+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.symbian.install": {
+        source: "apache",
+        extensions: ["sis", "sisx"]
+      },
+      "application/vnd.syncml+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["xsm"]
+      },
+      "application/vnd.syncml.dm+wbxml": {
+        source: "iana",
+        charset: "UTF-8",
+        extensions: ["bdm"]
+      },
+      "application/vnd.syncml.dm+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["xdm"]
+      },
+      "application/vnd.syncml.dm.notification": {
+        source: "iana"
+      },
+      "application/vnd.syncml.dmddf+wbxml": {
+        source: "iana"
+      },
+      "application/vnd.syncml.dmddf+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["ddf"]
+      },
+      "application/vnd.syncml.dmtnds+wbxml": {
+        source: "iana"
+      },
+      "application/vnd.syncml.dmtnds+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/vnd.syncml.ds.notification": {
+        source: "iana"
+      },
+      "application/vnd.tableschema+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.tao.intent-module-archive": {
+        source: "iana",
+        extensions: ["tao"]
+      },
+      "application/vnd.tcpdump.pcap": {
+        source: "iana",
+        extensions: ["pcap", "cap", "dmp"]
+      },
+      "application/vnd.think-cell.ppttc+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.tmd.mediaflex.api+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.tml": {
+        source: "iana"
+      },
+      "application/vnd.tmobile-livetv": {
+        source: "iana",
+        extensions: ["tmo"]
+      },
+      "application/vnd.tri.onesource": {
+        source: "iana"
+      },
+      "application/vnd.trid.tpt": {
+        source: "iana",
+        extensions: ["tpt"]
+      },
+      "application/vnd.triscape.mxs": {
+        source: "iana",
+        extensions: ["mxs"]
+      },
+      "application/vnd.trueapp": {
+        source: "iana",
+        extensions: ["tra"]
+      },
+      "application/vnd.truedoc": {
+        source: "iana"
+      },
+      "application/vnd.ubisoft.webplayer": {
+        source: "iana"
+      },
+      "application/vnd.ufdl": {
+        source: "iana",
+        extensions: ["ufd", "ufdl"]
+      },
+      "application/vnd.uiq.theme": {
+        source: "iana",
+        extensions: ["utz"]
+      },
+      "application/vnd.umajin": {
+        source: "iana",
+        extensions: ["umj"]
+      },
+      "application/vnd.unity": {
+        source: "iana",
+        extensions: ["unityweb"]
+      },
+      "application/vnd.uoml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["uoml"]
+      },
+      "application/vnd.uplanet.alert": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.alert-wbxml": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.bearer-choice": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.bearer-choice-wbxml": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.cacheop": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.cacheop-wbxml": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.channel": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.channel-wbxml": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.list": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.list-wbxml": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.listcmd": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.listcmd-wbxml": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.signal": {
+        source: "iana"
+      },
+      "application/vnd.uri-map": {
+        source: "iana"
+      },
+      "application/vnd.valve.source.material": {
+        source: "iana"
+      },
+      "application/vnd.vcx": {
+        source: "iana",
+        extensions: ["vcx"]
+      },
+      "application/vnd.vd-study": {
+        source: "iana"
+      },
+      "application/vnd.vectorworks": {
+        source: "iana"
+      },
+      "application/vnd.vel+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.verimatrix.vcas": {
+        source: "iana"
+      },
+      "application/vnd.veritone.aion+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.veryant.thin": {
+        source: "iana"
+      },
+      "application/vnd.ves.encrypted": {
+        source: "iana"
+      },
+      "application/vnd.vidsoft.vidconference": {
+        source: "iana"
+      },
+      "application/vnd.visio": {
+        source: "iana",
+        extensions: ["vsd", "vst", "vss", "vsw"]
+      },
+      "application/vnd.visionary": {
+        source: "iana",
+        extensions: ["vis"]
+      },
+      "application/vnd.vividence.scriptfile": {
+        source: "iana"
+      },
+      "application/vnd.vsf": {
+        source: "iana",
+        extensions: ["vsf"]
+      },
+      "application/vnd.wap.sic": {
+        source: "iana"
+      },
+      "application/vnd.wap.slc": {
+        source: "iana"
+      },
+      "application/vnd.wap.wbxml": {
+        source: "iana",
+        charset: "UTF-8",
+        extensions: ["wbxml"]
+      },
+      "application/vnd.wap.wmlc": {
+        source: "iana",
+        extensions: ["wmlc"]
+      },
+      "application/vnd.wap.wmlscriptc": {
+        source: "iana",
+        extensions: ["wmlsc"]
+      },
+      "application/vnd.webturbo": {
+        source: "iana",
+        extensions: ["wtb"]
+      },
+      "application/vnd.wfa.dpp": {
+        source: "iana"
+      },
+      "application/vnd.wfa.p2p": {
+        source: "iana"
+      },
+      "application/vnd.wfa.wsc": {
+        source: "iana"
+      },
+      "application/vnd.windows.devicepairing": {
+        source: "iana"
+      },
+      "application/vnd.wmc": {
+        source: "iana"
+      },
+      "application/vnd.wmf.bootstrap": {
+        source: "iana"
+      },
+      "application/vnd.wolfram.mathematica": {
+        source: "iana"
+      },
+      "application/vnd.wolfram.mathematica.package": {
+        source: "iana"
+      },
+      "application/vnd.wolfram.player": {
+        source: "iana",
+        extensions: ["nbp"]
+      },
+      "application/vnd.wordperfect": {
+        source: "iana",
+        extensions: ["wpd"]
+      },
+      "application/vnd.wqd": {
+        source: "iana",
+        extensions: ["wqd"]
+      },
+      "application/vnd.wrq-hp3000-labelled": {
+        source: "iana"
+      },
+      "application/vnd.wt.stf": {
+        source: "iana",
+        extensions: ["stf"]
+      },
+      "application/vnd.wv.csp+wbxml": {
+        source: "iana"
+      },
+      "application/vnd.wv.csp+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.wv.ssp+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.xacml+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.xara": {
+        source: "iana",
+        extensions: ["xar"]
+      },
+      "application/vnd.xfdl": {
+        source: "iana",
+        extensions: ["xfdl"]
+      },
+      "application/vnd.xfdl.webform": {
+        source: "iana"
+      },
+      "application/vnd.xmi+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.xmpie.cpkg": {
+        source: "iana"
+      },
+      "application/vnd.xmpie.dpkg": {
+        source: "iana"
+      },
+      "application/vnd.xmpie.plan": {
+        source: "iana"
+      },
+      "application/vnd.xmpie.ppkg": {
+        source: "iana"
+      },
+      "application/vnd.xmpie.xlim": {
+        source: "iana"
+      },
+      "application/vnd.yamaha.hv-dic": {
+        source: "iana",
+        extensions: ["hvd"]
+      },
+      "application/vnd.yamaha.hv-script": {
+        source: "iana",
+        extensions: ["hvs"]
+      },
+      "application/vnd.yamaha.hv-voice": {
+        source: "iana",
+        extensions: ["hvp"]
+      },
+      "application/vnd.yamaha.openscoreformat": {
+        source: "iana",
+        extensions: ["osf"]
+      },
+      "application/vnd.yamaha.openscoreformat.osfpvg+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["osfpvg"]
+      },
+      "application/vnd.yamaha.remote-setup": {
+        source: "iana"
+      },
+      "application/vnd.yamaha.smaf-audio": {
+        source: "iana",
+        extensions: ["saf"]
+      },
+      "application/vnd.yamaha.smaf-phrase": {
+        source: "iana",
+        extensions: ["spf"]
+      },
+      "application/vnd.yamaha.through-ngn": {
+        source: "iana"
+      },
+      "application/vnd.yamaha.tunnel-udpencap": {
+        source: "iana"
+      },
+      "application/vnd.yaoweme": {
+        source: "iana"
+      },
+      "application/vnd.yellowriver-custom-menu": {
+        source: "iana",
+        extensions: ["cmp"]
+      },
+      "application/vnd.youtube.yt": {
+        source: "iana"
+      },
+      "application/vnd.zul": {
+        source: "iana",
+        extensions: ["zir", "zirz"]
+      },
+      "application/vnd.zzazz.deck+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["zaz"]
+      },
+      "application/voicexml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["vxml"]
+      },
+      "application/voucher-cms+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vq-rtcpxr": {
+        source: "iana"
+      },
+      "application/wasm": {
+        source: "iana",
+        compressible: true,
+        extensions: ["wasm"]
+      },
+      "application/watcherinfo+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["wif"]
+      },
+      "application/webpush-options+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/whoispp-query": {
+        source: "iana"
+      },
+      "application/whoispp-response": {
+        source: "iana"
+      },
+      "application/widget": {
+        source: "iana",
+        extensions: ["wgt"]
+      },
+      "application/winhlp": {
+        source: "apache",
+        extensions: ["hlp"]
+      },
+      "application/wita": {
+        source: "iana"
+      },
+      "application/wordperfect5.1": {
+        source: "iana"
+      },
+      "application/wsdl+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["wsdl"]
+      },
+      "application/wspolicy+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["wspolicy"]
+      },
+      "application/x-7z-compressed": {
+        source: "apache",
+        compressible: false,
+        extensions: ["7z"]
+      },
+      "application/x-abiword": {
+        source: "apache",
+        extensions: ["abw"]
+      },
+      "application/x-ace-compressed": {
+        source: "apache",
+        extensions: ["ace"]
+      },
+      "application/x-amf": {
+        source: "apache"
+      },
+      "application/x-apple-diskimage": {
+        source: "apache",
+        extensions: ["dmg"]
+      },
+      "application/x-arj": {
+        compressible: false,
+        extensions: ["arj"]
+      },
+      "application/x-authorware-bin": {
+        source: "apache",
+        extensions: ["aab", "x32", "u32", "vox"]
+      },
+      "application/x-authorware-map": {
+        source: "apache",
+        extensions: ["aam"]
+      },
+      "application/x-authorware-seg": {
+        source: "apache",
+        extensions: ["aas"]
+      },
+      "application/x-bcpio": {
+        source: "apache",
+        extensions: ["bcpio"]
+      },
+      "application/x-bdoc": {
+        compressible: false,
+        extensions: ["bdoc"]
+      },
+      "application/x-bittorrent": {
+        source: "apache",
+        extensions: ["torrent"]
+      },
+      "application/x-blorb": {
+        source: "apache",
+        extensions: ["blb", "blorb"]
+      },
+      "application/x-bzip": {
+        source: "apache",
+        compressible: false,
+        extensions: ["bz"]
+      },
+      "application/x-bzip2": {
+        source: "apache",
+        compressible: false,
+        extensions: ["bz2", "boz"]
+      },
+      "application/x-cbr": {
+        source: "apache",
+        extensions: ["cbr", "cba", "cbt", "cbz", "cb7"]
+      },
+      "application/x-cdlink": {
+        source: "apache",
+        extensions: ["vcd"]
+      },
+      "application/x-cfs-compressed": {
+        source: "apache",
+        extensions: ["cfs"]
+      },
+      "application/x-chat": {
+        source: "apache",
+        extensions: ["chat"]
+      },
+      "application/x-chess-pgn": {
+        source: "apache",
+        extensions: ["pgn"]
+      },
+      "application/x-chrome-extension": {
+        extensions: ["crx"]
+      },
+      "application/x-cocoa": {
+        source: "nginx",
+        extensions: ["cco"]
+      },
+      "application/x-compress": {
+        source: "apache"
+      },
+      "application/x-conference": {
+        source: "apache",
+        extensions: ["nsc"]
+      },
+      "application/x-cpio": {
+        source: "apache",
+        extensions: ["cpio"]
+      },
+      "application/x-csh": {
+        source: "apache",
+        extensions: ["csh"]
+      },
+      "application/x-deb": {
+        compressible: false
+      },
+      "application/x-debian-package": {
+        source: "apache",
+        extensions: ["deb", "udeb"]
+      },
+      "application/x-dgc-compressed": {
+        source: "apache",
+        extensions: ["dgc"]
+      },
+      "application/x-director": {
+        source: "apache",
+        extensions: ["dir", "dcr", "dxr", "cst", "cct", "cxt", "w3d", "fgd", "swa"]
+      },
+      "application/x-doom": {
+        source: "apache",
+        extensions: ["wad"]
+      },
+      "application/x-dtbncx+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["ncx"]
+      },
+      "application/x-dtbook+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["dtb"]
+      },
+      "application/x-dtbresource+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["res"]
+      },
+      "application/x-dvi": {
+        source: "apache",
+        compressible: false,
+        extensions: ["dvi"]
+      },
+      "application/x-envoy": {
+        source: "apache",
+        extensions: ["evy"]
+      },
+      "application/x-eva": {
+        source: "apache",
+        extensions: ["eva"]
+      },
+      "application/x-font-bdf": {
+        source: "apache",
+        extensions: ["bdf"]
+      },
+      "application/x-font-dos": {
+        source: "apache"
+      },
+      "application/x-font-framemaker": {
+        source: "apache"
+      },
+      "application/x-font-ghostscript": {
+        source: "apache",
+        extensions: ["gsf"]
+      },
+      "application/x-font-libgrx": {
+        source: "apache"
+      },
+      "application/x-font-linux-psf": {
+        source: "apache",
+        extensions: ["psf"]
+      },
+      "application/x-font-pcf": {
+        source: "apache",
+        extensions: ["pcf"]
+      },
+      "application/x-font-snf": {
+        source: "apache",
+        extensions: ["snf"]
+      },
+      "application/x-font-speedo": {
+        source: "apache"
+      },
+      "application/x-font-sunos-news": {
+        source: "apache"
+      },
+      "application/x-font-type1": {
+        source: "apache",
+        extensions: ["pfa", "pfb", "pfm", "afm"]
+      },
+      "application/x-font-vfont": {
+        source: "apache"
+      },
+      "application/x-freearc": {
+        source: "apache",
+        extensions: ["arc"]
+      },
+      "application/x-futuresplash": {
+        source: "apache",
+        extensions: ["spl"]
+      },
+      "application/x-gca-compressed": {
+        source: "apache",
+        extensions: ["gca"]
+      },
+      "application/x-glulx": {
+        source: "apache",
+        extensions: ["ulx"]
+      },
+      "application/x-gnumeric": {
+        source: "apache",
+        extensions: ["gnumeric"]
+      },
+      "application/x-gramps-xml": {
+        source: "apache",
+        extensions: ["gramps"]
+      },
+      "application/x-gtar": {
+        source: "apache",
+        extensions: ["gtar"]
+      },
+      "application/x-gzip": {
+        source: "apache"
+      },
+      "application/x-hdf": {
+        source: "apache",
+        extensions: ["hdf"]
+      },
+      "application/x-httpd-php": {
+        compressible: true,
+        extensions: ["php"]
+      },
+      "application/x-install-instructions": {
+        source: "apache",
+        extensions: ["install"]
+      },
+      "application/x-iso9660-image": {
+        source: "apache",
+        extensions: ["iso"]
+      },
+      "application/x-iwork-keynote-sffkey": {
+        extensions: ["key"]
+      },
+      "application/x-iwork-numbers-sffnumbers": {
+        extensions: ["numbers"]
+      },
+      "application/x-iwork-pages-sffpages": {
+        extensions: ["pages"]
+      },
+      "application/x-java-archive-diff": {
+        source: "nginx",
+        extensions: ["jardiff"]
+      },
+      "application/x-java-jnlp-file": {
+        source: "apache",
+        compressible: false,
+        extensions: ["jnlp"]
+      },
+      "application/x-javascript": {
+        compressible: true
+      },
+      "application/x-keepass2": {
+        extensions: ["kdbx"]
+      },
+      "application/x-latex": {
+        source: "apache",
+        compressible: false,
+        extensions: ["latex"]
+      },
+      "application/x-lua-bytecode": {
+        extensions: ["luac"]
+      },
+      "application/x-lzh-compressed": {
+        source: "apache",
+        extensions: ["lzh", "lha"]
+      },
+      "application/x-makeself": {
+        source: "nginx",
+        extensions: ["run"]
+      },
+      "application/x-mie": {
+        source: "apache",
+        extensions: ["mie"]
+      },
+      "application/x-mobipocket-ebook": {
+        source: "apache",
+        extensions: ["prc", "mobi"]
+      },
+      "application/x-mpegurl": {
+        compressible: false
+      },
+      "application/x-ms-application": {
+        source: "apache",
+        extensions: ["application"]
+      },
+      "application/x-ms-shortcut": {
+        source: "apache",
+        extensions: ["lnk"]
+      },
+      "application/x-ms-wmd": {
+        source: "apache",
+        extensions: ["wmd"]
+      },
+      "application/x-ms-wmz": {
+        source: "apache",
+        extensions: ["wmz"]
+      },
+      "application/x-ms-xbap": {
+        source: "apache",
+        extensions: ["xbap"]
+      },
+      "application/x-msaccess": {
+        source: "apache",
+        extensions: ["mdb"]
+      },
+      "application/x-msbinder": {
+        source: "apache",
+        extensions: ["obd"]
+      },
+      "application/x-mscardfile": {
+        source: "apache",
+        extensions: ["crd"]
+      },
+      "application/x-msclip": {
+        source: "apache",
+        extensions: ["clp"]
+      },
+      "application/x-msdos-program": {
+        extensions: ["exe"]
+      },
+      "application/x-msdownload": {
+        source: "apache",
+        extensions: ["exe", "dll", "com", "bat", "msi"]
+      },
+      "application/x-msmediaview": {
+        source: "apache",
+        extensions: ["mvb", "m13", "m14"]
+      },
+      "application/x-msmetafile": {
+        source: "apache",
+        extensions: ["wmf", "wmz", "emf", "emz"]
+      },
+      "application/x-msmoney": {
+        source: "apache",
+        extensions: ["mny"]
+      },
+      "application/x-mspublisher": {
+        source: "apache",
+        extensions: ["pub"]
+      },
+      "application/x-msschedule": {
+        source: "apache",
+        extensions: ["scd"]
+      },
+      "application/x-msterminal": {
+        source: "apache",
+        extensions: ["trm"]
+      },
+      "application/x-mswrite": {
+        source: "apache",
+        extensions: ["wri"]
+      },
+      "application/x-netcdf": {
+        source: "apache",
+        extensions: ["nc", "cdf"]
+      },
+      "application/x-ns-proxy-autoconfig": {
+        compressible: true,
+        extensions: ["pac"]
+      },
+      "application/x-nzb": {
+        source: "apache",
+        extensions: ["nzb"]
+      },
+      "application/x-perl": {
+        source: "nginx",
+        extensions: ["pl", "pm"]
+      },
+      "application/x-pilot": {
+        source: "nginx",
+        extensions: ["prc", "pdb"]
+      },
+      "application/x-pkcs12": {
+        source: "apache",
+        compressible: false,
+        extensions: ["p12", "pfx"]
+      },
+      "application/x-pkcs7-certificates": {
+        source: "apache",
+        extensions: ["p7b", "spc"]
+      },
+      "application/x-pkcs7-certreqresp": {
+        source: "apache",
+        extensions: ["p7r"]
+      },
+      "application/x-pki-message": {
+        source: "iana"
+      },
+      "application/x-rar-compressed": {
+        source: "apache",
+        compressible: false,
+        extensions: ["rar"]
+      },
+      "application/x-redhat-package-manager": {
+        source: "nginx",
+        extensions: ["rpm"]
+      },
+      "application/x-research-info-systems": {
+        source: "apache",
+        extensions: ["ris"]
+      },
+      "application/x-sea": {
+        source: "nginx",
+        extensions: ["sea"]
+      },
+      "application/x-sh": {
+        source: "apache",
+        compressible: true,
+        extensions: ["sh"]
+      },
+      "application/x-shar": {
+        source: "apache",
+        extensions: ["shar"]
+      },
+      "application/x-shockwave-flash": {
+        source: "apache",
+        compressible: false,
+        extensions: ["swf"]
+      },
+      "application/x-silverlight-app": {
+        source: "apache",
+        extensions: ["xap"]
+      },
+      "application/x-sql": {
+        source: "apache",
+        extensions: ["sql"]
+      },
+      "application/x-stuffit": {
+        source: "apache",
+        compressible: false,
+        extensions: ["sit"]
+      },
+      "application/x-stuffitx": {
+        source: "apache",
+        extensions: ["sitx"]
+      },
+      "application/x-subrip": {
+        source: "apache",
+        extensions: ["srt"]
+      },
+      "application/x-sv4cpio": {
+        source: "apache",
+        extensions: ["sv4cpio"]
+      },
+      "application/x-sv4crc": {
+        source: "apache",
+        extensions: ["sv4crc"]
+      },
+      "application/x-t3vm-image": {
+        source: "apache",
+        extensions: ["t3"]
+      },
+      "application/x-tads": {
+        source: "apache",
+        extensions: ["gam"]
+      },
+      "application/x-tar": {
+        source: "apache",
+        compressible: true,
+        extensions: ["tar"]
+      },
+      "application/x-tcl": {
+        source: "apache",
+        extensions: ["tcl", "tk"]
+      },
+      "application/x-tex": {
+        source: "apache",
+        extensions: ["tex"]
+      },
+      "application/x-tex-tfm": {
+        source: "apache",
+        extensions: ["tfm"]
+      },
+      "application/x-texinfo": {
+        source: "apache",
+        extensions: ["texinfo", "texi"]
+      },
+      "application/x-tgif": {
+        source: "apache",
+        extensions: ["obj"]
+      },
+      "application/x-ustar": {
+        source: "apache",
+        extensions: ["ustar"]
+      },
+      "application/x-virtualbox-hdd": {
+        compressible: true,
+        extensions: ["hdd"]
+      },
+      "application/x-virtualbox-ova": {
+        compressible: true,
+        extensions: ["ova"]
+      },
+      "application/x-virtualbox-ovf": {
+        compressible: true,
+        extensions: ["ovf"]
+      },
+      "application/x-virtualbox-vbox": {
+        compressible: true,
+        extensions: ["vbox"]
+      },
+      "application/x-virtualbox-vbox-extpack": {
+        compressible: false,
+        extensions: ["vbox-extpack"]
+      },
+      "application/x-virtualbox-vdi": {
+        compressible: true,
+        extensions: ["vdi"]
+      },
+      "application/x-virtualbox-vhd": {
+        compressible: true,
+        extensions: ["vhd"]
+      },
+      "application/x-virtualbox-vmdk": {
+        compressible: true,
+        extensions: ["vmdk"]
+      },
+      "application/x-wais-source": {
+        source: "apache",
+        extensions: ["src"]
+      },
+      "application/x-web-app-manifest+json": {
+        compressible: true,
+        extensions: ["webapp"]
+      },
+      "application/x-www-form-urlencoded": {
+        source: "iana",
+        compressible: true
+      },
+      "application/x-x509-ca-cert": {
+        source: "iana",
+        extensions: ["der", "crt", "pem"]
+      },
+      "application/x-x509-ca-ra-cert": {
+        source: "iana"
+      },
+      "application/x-x509-next-ca-cert": {
+        source: "iana"
+      },
+      "application/x-xfig": {
+        source: "apache",
+        extensions: ["fig"]
+      },
+      "application/x-xliff+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["xlf"]
+      },
+      "application/x-xpinstall": {
+        source: "apache",
+        compressible: false,
+        extensions: ["xpi"]
+      },
+      "application/x-xz": {
+        source: "apache",
+        extensions: ["xz"]
+      },
+      "application/x-zmachine": {
+        source: "apache",
+        extensions: ["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8"]
+      },
+      "application/x400-bp": {
+        source: "iana"
+      },
+      "application/xacml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/xaml+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["xaml"]
+      },
+      "application/xcap-att+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xav"]
+      },
+      "application/xcap-caps+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xca"]
+      },
+      "application/xcap-diff+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xdf"]
+      },
+      "application/xcap-el+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xel"]
+      },
+      "application/xcap-error+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/xcap-ns+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xns"]
+      },
+      "application/xcon-conference-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/xcon-conference-info-diff+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/xenc+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xenc"]
+      },
+      "application/xhtml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xhtml", "xht"]
+      },
+      "application/xhtml-voice+xml": {
+        source: "apache",
+        compressible: true
+      },
+      "application/xliff+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xlf"]
+      },
+      "application/xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xml", "xsl", "xsd", "rng"]
+      },
+      "application/xml-dtd": {
+        source: "iana",
+        compressible: true,
+        extensions: ["dtd"]
+      },
+      "application/xml-external-parsed-entity": {
+        source: "iana"
+      },
+      "application/xml-patch+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/xmpp+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/xop+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xop"]
+      },
+      "application/xproc+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["xpl"]
+      },
+      "application/xslt+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xsl", "xslt"]
+      },
+      "application/xspf+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["xspf"]
+      },
+      "application/xv+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mxml", "xhvml", "xvml", "xvm"]
+      },
+      "application/yang": {
+        source: "iana",
+        extensions: ["yang"]
+      },
+      "application/yang-data+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/yang-data+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/yang-patch+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/yang-patch+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/yin+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["yin"]
+      },
+      "application/zip": {
+        source: "iana",
+        compressible: false,
+        extensions: ["zip"]
+      },
+      "application/zlib": {
+        source: "iana"
+      },
+      "application/zstd": {
+        source: "iana"
+      },
+      "audio/1d-interleaved-parityfec": {
+        source: "iana"
+      },
+      "audio/32kadpcm": {
+        source: "iana"
+      },
+      "audio/3gpp": {
+        source: "iana",
+        compressible: false,
+        extensions: ["3gpp"]
+      },
+      "audio/3gpp2": {
+        source: "iana"
+      },
+      "audio/aac": {
+        source: "iana"
+      },
+      "audio/ac3": {
+        source: "iana"
+      },
+      "audio/adpcm": {
+        source: "apache",
+        extensions: ["adp"]
+      },
+      "audio/amr": {
+        source: "iana",
+        extensions: ["amr"]
+      },
+      "audio/amr-wb": {
+        source: "iana"
+      },
+      "audio/amr-wb+": {
+        source: "iana"
+      },
+      "audio/aptx": {
+        source: "iana"
+      },
+      "audio/asc": {
+        source: "iana"
+      },
+      "audio/atrac-advanced-lossless": {
+        source: "iana"
+      },
+      "audio/atrac-x": {
+        source: "iana"
+      },
+      "audio/atrac3": {
+        source: "iana"
+      },
+      "audio/basic": {
+        source: "iana",
+        compressible: false,
+        extensions: ["au", "snd"]
+      },
+      "audio/bv16": {
+        source: "iana"
+      },
+      "audio/bv32": {
+        source: "iana"
+      },
+      "audio/clearmode": {
+        source: "iana"
+      },
+      "audio/cn": {
+        source: "iana"
+      },
+      "audio/dat12": {
+        source: "iana"
+      },
+      "audio/dls": {
+        source: "iana"
+      },
+      "audio/dsr-es201108": {
+        source: "iana"
+      },
+      "audio/dsr-es202050": {
+        source: "iana"
+      },
+      "audio/dsr-es202211": {
+        source: "iana"
+      },
+      "audio/dsr-es202212": {
+        source: "iana"
+      },
+      "audio/dv": {
+        source: "iana"
+      },
+      "audio/dvi4": {
+        source: "iana"
+      },
+      "audio/eac3": {
+        source: "iana"
+      },
+      "audio/encaprtp": {
+        source: "iana"
+      },
+      "audio/evrc": {
+        source: "iana"
+      },
+      "audio/evrc-qcp": {
+        source: "iana"
+      },
+      "audio/evrc0": {
+        source: "iana"
+      },
+      "audio/evrc1": {
+        source: "iana"
+      },
+      "audio/evrcb": {
+        source: "iana"
+      },
+      "audio/evrcb0": {
+        source: "iana"
+      },
+      "audio/evrcb1": {
+        source: "iana"
+      },
+      "audio/evrcnw": {
+        source: "iana"
+      },
+      "audio/evrcnw0": {
+        source: "iana"
+      },
+      "audio/evrcnw1": {
+        source: "iana"
+      },
+      "audio/evrcwb": {
+        source: "iana"
+      },
+      "audio/evrcwb0": {
+        source: "iana"
+      },
+      "audio/evrcwb1": {
+        source: "iana"
+      },
+      "audio/evs": {
+        source: "iana"
+      },
+      "audio/flexfec": {
+        source: "iana"
+      },
+      "audio/fwdred": {
+        source: "iana"
+      },
+      "audio/g711-0": {
+        source: "iana"
+      },
+      "audio/g719": {
+        source: "iana"
+      },
+      "audio/g722": {
+        source: "iana"
+      },
+      "audio/g7221": {
+        source: "iana"
+      },
+      "audio/g723": {
+        source: "iana"
+      },
+      "audio/g726-16": {
+        source: "iana"
+      },
+      "audio/g726-24": {
+        source: "iana"
+      },
+      "audio/g726-32": {
+        source: "iana"
+      },
+      "audio/g726-40": {
+        source: "iana"
+      },
+      "audio/g728": {
+        source: "iana"
+      },
+      "audio/g729": {
+        source: "iana"
+      },
+      "audio/g7291": {
+        source: "iana"
+      },
+      "audio/g729d": {
+        source: "iana"
+      },
+      "audio/g729e": {
+        source: "iana"
+      },
+      "audio/gsm": {
+        source: "iana"
+      },
+      "audio/gsm-efr": {
+        source: "iana"
+      },
+      "audio/gsm-hr-08": {
+        source: "iana"
+      },
+      "audio/ilbc": {
+        source: "iana"
+      },
+      "audio/ip-mr_v2.5": {
+        source: "iana"
+      },
+      "audio/isac": {
+        source: "apache"
+      },
+      "audio/l16": {
+        source: "iana"
+      },
+      "audio/l20": {
+        source: "iana"
+      },
+      "audio/l24": {
+        source: "iana",
+        compressible: false
+      },
+      "audio/l8": {
+        source: "iana"
+      },
+      "audio/lpc": {
+        source: "iana"
+      },
+      "audio/melp": {
+        source: "iana"
+      },
+      "audio/melp1200": {
+        source: "iana"
+      },
+      "audio/melp2400": {
+        source: "iana"
+      },
+      "audio/melp600": {
+        source: "iana"
+      },
+      "audio/mhas": {
+        source: "iana"
+      },
+      "audio/midi": {
+        source: "apache",
+        extensions: ["mid", "midi", "kar", "rmi"]
+      },
+      "audio/mobile-xmf": {
+        source: "iana",
+        extensions: ["mxmf"]
+      },
+      "audio/mp3": {
+        compressible: false,
+        extensions: ["mp3"]
+      },
+      "audio/mp4": {
+        source: "iana",
+        compressible: false,
+        extensions: ["m4a", "mp4a"]
+      },
+      "audio/mp4a-latm": {
+        source: "iana"
+      },
+      "audio/mpa": {
+        source: "iana"
+      },
+      "audio/mpa-robust": {
+        source: "iana"
+      },
+      "audio/mpeg": {
+        source: "iana",
+        compressible: false,
+        extensions: ["mpga", "mp2", "mp2a", "mp3", "m2a", "m3a"]
+      },
+      "audio/mpeg4-generic": {
+        source: "iana"
+      },
+      "audio/musepack": {
+        source: "apache"
+      },
+      "audio/ogg": {
+        source: "iana",
+        compressible: false,
+        extensions: ["oga", "ogg", "spx", "opus"]
+      },
+      "audio/opus": {
+        source: "iana"
+      },
+      "audio/parityfec": {
+        source: "iana"
+      },
+      "audio/pcma": {
+        source: "iana"
+      },
+      "audio/pcma-wb": {
+        source: "iana"
+      },
+      "audio/pcmu": {
+        source: "iana"
+      },
+      "audio/pcmu-wb": {
+        source: "iana"
+      },
+      "audio/prs.sid": {
+        source: "iana"
+      },
+      "audio/qcelp": {
+        source: "iana"
+      },
+      "audio/raptorfec": {
+        source: "iana"
+      },
+      "audio/red": {
+        source: "iana"
+      },
+      "audio/rtp-enc-aescm128": {
+        source: "iana"
+      },
+      "audio/rtp-midi": {
+        source: "iana"
+      },
+      "audio/rtploopback": {
+        source: "iana"
+      },
+      "audio/rtx": {
+        source: "iana"
+      },
+      "audio/s3m": {
+        source: "apache",
+        extensions: ["s3m"]
+      },
+      "audio/scip": {
+        source: "iana"
+      },
+      "audio/silk": {
+        source: "apache",
+        extensions: ["sil"]
+      },
+      "audio/smv": {
+        source: "iana"
+      },
+      "audio/smv-qcp": {
+        source: "iana"
+      },
+      "audio/smv0": {
+        source: "iana"
+      },
+      "audio/sofa": {
+        source: "iana"
+      },
+      "audio/sp-midi": {
+        source: "iana"
+      },
+      "audio/speex": {
+        source: "iana"
+      },
+      "audio/t140c": {
+        source: "iana"
+      },
+      "audio/t38": {
+        source: "iana"
+      },
+      "audio/telephone-event": {
+        source: "iana"
+      },
+      "audio/tetra_acelp": {
+        source: "iana"
+      },
+      "audio/tetra_acelp_bb": {
+        source: "iana"
+      },
+      "audio/tone": {
+        source: "iana"
+      },
+      "audio/tsvcis": {
+        source: "iana"
+      },
+      "audio/uemclip": {
+        source: "iana"
+      },
+      "audio/ulpfec": {
+        source: "iana"
+      },
+      "audio/usac": {
+        source: "iana"
+      },
+      "audio/vdvi": {
+        source: "iana"
+      },
+      "audio/vmr-wb": {
+        source: "iana"
+      },
+      "audio/vnd.3gpp.iufp": {
+        source: "iana"
+      },
+      "audio/vnd.4sb": {
+        source: "iana"
+      },
+      "audio/vnd.audiokoz": {
+        source: "iana"
+      },
+      "audio/vnd.celp": {
+        source: "iana"
+      },
+      "audio/vnd.cisco.nse": {
+        source: "iana"
+      },
+      "audio/vnd.cmles.radio-events": {
+        source: "iana"
+      },
+      "audio/vnd.cns.anp1": {
+        source: "iana"
+      },
+      "audio/vnd.cns.inf1": {
+        source: "iana"
+      },
+      "audio/vnd.dece.audio": {
+        source: "iana",
+        extensions: ["uva", "uvva"]
+      },
+      "audio/vnd.digital-winds": {
+        source: "iana",
+        extensions: ["eol"]
+      },
+      "audio/vnd.dlna.adts": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.heaac.1": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.heaac.2": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.mlp": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.mps": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.pl2": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.pl2x": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.pl2z": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.pulse.1": {
+        source: "iana"
+      },
+      "audio/vnd.dra": {
+        source: "iana",
+        extensions: ["dra"]
+      },
+      "audio/vnd.dts": {
+        source: "iana",
+        extensions: ["dts"]
+      },
+      "audio/vnd.dts.hd": {
+        source: "iana",
+        extensions: ["dtshd"]
+      },
+      "audio/vnd.dts.uhd": {
+        source: "iana"
+      },
+      "audio/vnd.dvb.file": {
+        source: "iana"
+      },
+      "audio/vnd.everad.plj": {
+        source: "iana"
+      },
+      "audio/vnd.hns.audio": {
+        source: "iana"
+      },
+      "audio/vnd.lucent.voice": {
+        source: "iana",
+        extensions: ["lvp"]
+      },
+      "audio/vnd.ms-playready.media.pya": {
+        source: "iana",
+        extensions: ["pya"]
+      },
+      "audio/vnd.nokia.mobile-xmf": {
+        source: "iana"
+      },
+      "audio/vnd.nortel.vbk": {
+        source: "iana"
+      },
+      "audio/vnd.nuera.ecelp4800": {
+        source: "iana",
+        extensions: ["ecelp4800"]
+      },
+      "audio/vnd.nuera.ecelp7470": {
+        source: "iana",
+        extensions: ["ecelp7470"]
+      },
+      "audio/vnd.nuera.ecelp9600": {
+        source: "iana",
+        extensions: ["ecelp9600"]
+      },
+      "audio/vnd.octel.sbc": {
+        source: "iana"
+      },
+      "audio/vnd.presonus.multitrack": {
+        source: "iana"
+      },
+      "audio/vnd.qcelp": {
+        source: "iana"
+      },
+      "audio/vnd.rhetorex.32kadpcm": {
+        source: "iana"
+      },
+      "audio/vnd.rip": {
+        source: "iana",
+        extensions: ["rip"]
+      },
+      "audio/vnd.rn-realaudio": {
+        compressible: false
+      },
+      "audio/vnd.sealedmedia.softseal.mpeg": {
+        source: "iana"
+      },
+      "audio/vnd.vmx.cvsd": {
+        source: "iana"
+      },
+      "audio/vnd.wave": {
+        compressible: false
+      },
+      "audio/vorbis": {
+        source: "iana",
+        compressible: false
+      },
+      "audio/vorbis-config": {
+        source: "iana"
+      },
+      "audio/wav": {
+        compressible: false,
+        extensions: ["wav"]
+      },
+      "audio/wave": {
+        compressible: false,
+        extensions: ["wav"]
+      },
+      "audio/webm": {
+        source: "apache",
+        compressible: false,
+        extensions: ["weba"]
+      },
+      "audio/x-aac": {
+        source: "apache",
+        compressible: false,
+        extensions: ["aac"]
+      },
+      "audio/x-aiff": {
+        source: "apache",
+        extensions: ["aif", "aiff", "aifc"]
+      },
+      "audio/x-caf": {
+        source: "apache",
+        compressible: false,
+        extensions: ["caf"]
+      },
+      "audio/x-flac": {
+        source: "apache",
+        extensions: ["flac"]
+      },
+      "audio/x-m4a": {
+        source: "nginx",
+        extensions: ["m4a"]
+      },
+      "audio/x-matroska": {
+        source: "apache",
+        extensions: ["mka"]
+      },
+      "audio/x-mpegurl": {
+        source: "apache",
+        extensions: ["m3u"]
+      },
+      "audio/x-ms-wax": {
+        source: "apache",
+        extensions: ["wax"]
+      },
+      "audio/x-ms-wma": {
+        source: "apache",
+        extensions: ["wma"]
+      },
+      "audio/x-pn-realaudio": {
+        source: "apache",
+        extensions: ["ram", "ra"]
+      },
+      "audio/x-pn-realaudio-plugin": {
+        source: "apache",
+        extensions: ["rmp"]
+      },
+      "audio/x-realaudio": {
+        source: "nginx",
+        extensions: ["ra"]
+      },
+      "audio/x-tta": {
+        source: "apache"
+      },
+      "audio/x-wav": {
+        source: "apache",
+        extensions: ["wav"]
+      },
+      "audio/xm": {
+        source: "apache",
+        extensions: ["xm"]
+      },
+      "chemical/x-cdx": {
+        source: "apache",
+        extensions: ["cdx"]
+      },
+      "chemical/x-cif": {
+        source: "apache",
+        extensions: ["cif"]
+      },
+      "chemical/x-cmdf": {
+        source: "apache",
+        extensions: ["cmdf"]
+      },
+      "chemical/x-cml": {
+        source: "apache",
+        extensions: ["cml"]
+      },
+      "chemical/x-csml": {
+        source: "apache",
+        extensions: ["csml"]
+      },
+      "chemical/x-pdb": {
+        source: "apache"
+      },
+      "chemical/x-xyz": {
+        source: "apache",
+        extensions: ["xyz"]
+      },
+      "font/collection": {
+        source: "iana",
+        extensions: ["ttc"]
+      },
+      "font/otf": {
+        source: "iana",
+        compressible: true,
+        extensions: ["otf"]
+      },
+      "font/sfnt": {
+        source: "iana"
+      },
+      "font/ttf": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ttf"]
+      },
+      "font/woff": {
+        source: "iana",
+        extensions: ["woff"]
+      },
+      "font/woff2": {
+        source: "iana",
+        extensions: ["woff2"]
+      },
+      "image/aces": {
+        source: "iana",
+        extensions: ["exr"]
+      },
+      "image/apng": {
+        compressible: false,
+        extensions: ["apng"]
+      },
+      "image/avci": {
+        source: "iana",
+        extensions: ["avci"]
+      },
+      "image/avcs": {
+        source: "iana",
+        extensions: ["avcs"]
+      },
+      "image/avif": {
+        source: "iana",
+        compressible: false,
+        extensions: ["avif"]
+      },
+      "image/bmp": {
+        source: "iana",
+        compressible: true,
+        extensions: ["bmp"]
+      },
+      "image/cgm": {
+        source: "iana",
+        extensions: ["cgm"]
+      },
+      "image/dicom-rle": {
+        source: "iana",
+        extensions: ["drle"]
+      },
+      "image/emf": {
+        source: "iana",
+        extensions: ["emf"]
+      },
+      "image/fits": {
+        source: "iana",
+        extensions: ["fits"]
+      },
+      "image/g3fax": {
+        source: "iana",
+        extensions: ["g3"]
+      },
+      "image/gif": {
+        source: "iana",
+        compressible: false,
+        extensions: ["gif"]
+      },
+      "image/heic": {
+        source: "iana",
+        extensions: ["heic"]
+      },
+      "image/heic-sequence": {
+        source: "iana",
+        extensions: ["heics"]
+      },
+      "image/heif": {
+        source: "iana",
+        extensions: ["heif"]
+      },
+      "image/heif-sequence": {
+        source: "iana",
+        extensions: ["heifs"]
+      },
+      "image/hej2k": {
+        source: "iana",
+        extensions: ["hej2"]
+      },
+      "image/hsj2": {
+        source: "iana",
+        extensions: ["hsj2"]
+      },
+      "image/ief": {
+        source: "iana",
+        extensions: ["ief"]
+      },
+      "image/jls": {
+        source: "iana",
+        extensions: ["jls"]
+      },
+      "image/jp2": {
+        source: "iana",
+        compressible: false,
+        extensions: ["jp2", "jpg2"]
+      },
+      "image/jpeg": {
+        source: "iana",
+        compressible: false,
+        extensions: ["jpeg", "jpg", "jpe"]
+      },
+      "image/jph": {
+        source: "iana",
+        extensions: ["jph"]
+      },
+      "image/jphc": {
+        source: "iana",
+        extensions: ["jhc"]
+      },
+      "image/jpm": {
+        source: "iana",
+        compressible: false,
+        extensions: ["jpm"]
+      },
+      "image/jpx": {
+        source: "iana",
+        compressible: false,
+        extensions: ["jpx", "jpf"]
+      },
+      "image/jxr": {
+        source: "iana",
+        extensions: ["jxr"]
+      },
+      "image/jxra": {
+        source: "iana",
+        extensions: ["jxra"]
+      },
+      "image/jxrs": {
+        source: "iana",
+        extensions: ["jxrs"]
+      },
+      "image/jxs": {
+        source: "iana",
+        extensions: ["jxs"]
+      },
+      "image/jxsc": {
+        source: "iana",
+        extensions: ["jxsc"]
+      },
+      "image/jxsi": {
+        source: "iana",
+        extensions: ["jxsi"]
+      },
+      "image/jxss": {
+        source: "iana",
+        extensions: ["jxss"]
+      },
+      "image/ktx": {
+        source: "iana",
+        extensions: ["ktx"]
+      },
+      "image/ktx2": {
+        source: "iana",
+        extensions: ["ktx2"]
+      },
+      "image/naplps": {
+        source: "iana"
+      },
+      "image/pjpeg": {
+        compressible: false
+      },
+      "image/png": {
+        source: "iana",
+        compressible: false,
+        extensions: ["png"]
+      },
+      "image/prs.btif": {
+        source: "iana",
+        extensions: ["btif"]
+      },
+      "image/prs.pti": {
+        source: "iana",
+        extensions: ["pti"]
+      },
+      "image/pwg-raster": {
+        source: "iana"
+      },
+      "image/sgi": {
+        source: "apache",
+        extensions: ["sgi"]
+      },
+      "image/svg+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["svg", "svgz"]
+      },
+      "image/t38": {
+        source: "iana",
+        extensions: ["t38"]
+      },
+      "image/tiff": {
+        source: "iana",
+        compressible: false,
+        extensions: ["tif", "tiff"]
+      },
+      "image/tiff-fx": {
+        source: "iana",
+        extensions: ["tfx"]
+      },
+      "image/vnd.adobe.photoshop": {
+        source: "iana",
+        compressible: true,
+        extensions: ["psd"]
+      },
+      "image/vnd.airzip.accelerator.azv": {
+        source: "iana",
+        extensions: ["azv"]
+      },
+      "image/vnd.cns.inf2": {
+        source: "iana"
+      },
+      "image/vnd.dece.graphic": {
+        source: "iana",
+        extensions: ["uvi", "uvvi", "uvg", "uvvg"]
+      },
+      "image/vnd.djvu": {
+        source: "iana",
+        extensions: ["djvu", "djv"]
+      },
+      "image/vnd.dvb.subtitle": {
+        source: "iana",
+        extensions: ["sub"]
+      },
+      "image/vnd.dwg": {
+        source: "iana",
+        extensions: ["dwg"]
+      },
+      "image/vnd.dxf": {
+        source: "iana",
+        extensions: ["dxf"]
+      },
+      "image/vnd.fastbidsheet": {
+        source: "iana",
+        extensions: ["fbs"]
+      },
+      "image/vnd.fpx": {
+        source: "iana",
+        extensions: ["fpx"]
+      },
+      "image/vnd.fst": {
+        source: "iana",
+        extensions: ["fst"]
+      },
+      "image/vnd.fujixerox.edmics-mmr": {
+        source: "iana",
+        extensions: ["mmr"]
+      },
+      "image/vnd.fujixerox.edmics-rlc": {
+        source: "iana",
+        extensions: ["rlc"]
+      },
+      "image/vnd.globalgraphics.pgb": {
+        source: "iana"
+      },
+      "image/vnd.microsoft.icon": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ico"]
+      },
+      "image/vnd.mix": {
+        source: "iana"
+      },
+      "image/vnd.mozilla.apng": {
+        source: "iana"
+      },
+      "image/vnd.ms-dds": {
+        compressible: true,
+        extensions: ["dds"]
+      },
+      "image/vnd.ms-modi": {
+        source: "iana",
+        extensions: ["mdi"]
+      },
+      "image/vnd.ms-photo": {
+        source: "apache",
+        extensions: ["wdp"]
+      },
+      "image/vnd.net-fpx": {
+        source: "iana",
+        extensions: ["npx"]
+      },
+      "image/vnd.pco.b16": {
+        source: "iana",
+        extensions: ["b16"]
+      },
+      "image/vnd.radiance": {
+        source: "iana"
+      },
+      "image/vnd.sealed.png": {
+        source: "iana"
+      },
+      "image/vnd.sealedmedia.softseal.gif": {
+        source: "iana"
+      },
+      "image/vnd.sealedmedia.softseal.jpg": {
+        source: "iana"
+      },
+      "image/vnd.svf": {
+        source: "iana"
+      },
+      "image/vnd.tencent.tap": {
+        source: "iana",
+        extensions: ["tap"]
+      },
+      "image/vnd.valve.source.texture": {
+        source: "iana",
+        extensions: ["vtf"]
+      },
+      "image/vnd.wap.wbmp": {
+        source: "iana",
+        extensions: ["wbmp"]
+      },
+      "image/vnd.xiff": {
+        source: "iana",
+        extensions: ["xif"]
+      },
+      "image/vnd.zbrush.pcx": {
+        source: "iana",
+        extensions: ["pcx"]
+      },
+      "image/webp": {
+        source: "apache",
+        extensions: ["webp"]
+      },
+      "image/wmf": {
+        source: "iana",
+        extensions: ["wmf"]
+      },
+      "image/x-3ds": {
+        source: "apache",
+        extensions: ["3ds"]
+      },
+      "image/x-cmu-raster": {
+        source: "apache",
+        extensions: ["ras"]
+      },
+      "image/x-cmx": {
+        source: "apache",
+        extensions: ["cmx"]
+      },
+      "image/x-freehand": {
+        source: "apache",
+        extensions: ["fh", "fhc", "fh4", "fh5", "fh7"]
+      },
+      "image/x-icon": {
+        source: "apache",
+        compressible: true,
+        extensions: ["ico"]
+      },
+      "image/x-jng": {
+        source: "nginx",
+        extensions: ["jng"]
+      },
+      "image/x-mrsid-image": {
+        source: "apache",
+        extensions: ["sid"]
+      },
+      "image/x-ms-bmp": {
+        source: "nginx",
+        compressible: true,
+        extensions: ["bmp"]
+      },
+      "image/x-pcx": {
+        source: "apache",
+        extensions: ["pcx"]
+      },
+      "image/x-pict": {
+        source: "apache",
+        extensions: ["pic", "pct"]
+      },
+      "image/x-portable-anymap": {
+        source: "apache",
+        extensions: ["pnm"]
+      },
+      "image/x-portable-bitmap": {
+        source: "apache",
+        extensions: ["pbm"]
+      },
+      "image/x-portable-graymap": {
+        source: "apache",
+        extensions: ["pgm"]
+      },
+      "image/x-portable-pixmap": {
+        source: "apache",
+        extensions: ["ppm"]
+      },
+      "image/x-rgb": {
+        source: "apache",
+        extensions: ["rgb"]
+      },
+      "image/x-tga": {
+        source: "apache",
+        extensions: ["tga"]
+      },
+      "image/x-xbitmap": {
+        source: "apache",
+        extensions: ["xbm"]
+      },
+      "image/x-xcf": {
+        compressible: false
+      },
+      "image/x-xpixmap": {
+        source: "apache",
+        extensions: ["xpm"]
+      },
+      "image/x-xwindowdump": {
+        source: "apache",
+        extensions: ["xwd"]
+      },
+      "message/cpim": {
+        source: "iana"
+      },
+      "message/delivery-status": {
+        source: "iana"
+      },
+      "message/disposition-notification": {
+        source: "iana",
+        extensions: [
+          "disposition-notification"
+        ]
+      },
+      "message/external-body": {
+        source: "iana"
+      },
+      "message/feedback-report": {
+        source: "iana"
+      },
+      "message/global": {
+        source: "iana",
+        extensions: ["u8msg"]
+      },
+      "message/global-delivery-status": {
+        source: "iana",
+        extensions: ["u8dsn"]
+      },
+      "message/global-disposition-notification": {
+        source: "iana",
+        extensions: ["u8mdn"]
+      },
+      "message/global-headers": {
+        source: "iana",
+        extensions: ["u8hdr"]
+      },
+      "message/http": {
+        source: "iana",
+        compressible: false
+      },
+      "message/imdn+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "message/news": {
+        source: "iana"
+      },
+      "message/partial": {
+        source: "iana",
+        compressible: false
+      },
+      "message/rfc822": {
+        source: "iana",
+        compressible: true,
+        extensions: ["eml", "mime"]
+      },
+      "message/s-http": {
+        source: "iana"
+      },
+      "message/sip": {
+        source: "iana"
+      },
+      "message/sipfrag": {
+        source: "iana"
+      },
+      "message/tracking-status": {
+        source: "iana"
+      },
+      "message/vnd.si.simp": {
+        source: "iana"
+      },
+      "message/vnd.wfa.wsc": {
+        source: "iana",
+        extensions: ["wsc"]
+      },
+      "model/3mf": {
+        source: "iana",
+        extensions: ["3mf"]
+      },
+      "model/e57": {
+        source: "iana"
+      },
+      "model/gltf+json": {
+        source: "iana",
+        compressible: true,
+        extensions: ["gltf"]
+      },
+      "model/gltf-binary": {
+        source: "iana",
+        compressible: true,
+        extensions: ["glb"]
+      },
+      "model/iges": {
+        source: "iana",
+        compressible: false,
+        extensions: ["igs", "iges"]
+      },
+      "model/mesh": {
+        source: "iana",
+        compressible: false,
+        extensions: ["msh", "mesh", "silo"]
+      },
+      "model/mtl": {
+        source: "iana",
+        extensions: ["mtl"]
+      },
+      "model/obj": {
+        source: "iana",
+        extensions: ["obj"]
+      },
+      "model/step": {
+        source: "iana"
+      },
+      "model/step+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["stpx"]
+      },
+      "model/step+zip": {
+        source: "iana",
+        compressible: false,
+        extensions: ["stpz"]
+      },
+      "model/step-xml+zip": {
+        source: "iana",
+        compressible: false,
+        extensions: ["stpxz"]
+      },
+      "model/stl": {
+        source: "iana",
+        extensions: ["stl"]
+      },
+      "model/vnd.collada+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["dae"]
+      },
+      "model/vnd.dwf": {
+        source: "iana",
+        extensions: ["dwf"]
+      },
+      "model/vnd.flatland.3dml": {
+        source: "iana"
+      },
+      "model/vnd.gdl": {
+        source: "iana",
+        extensions: ["gdl"]
+      },
+      "model/vnd.gs-gdl": {
+        source: "apache"
+      },
+      "model/vnd.gs.gdl": {
+        source: "iana"
+      },
+      "model/vnd.gtw": {
+        source: "iana",
+        extensions: ["gtw"]
+      },
+      "model/vnd.moml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "model/vnd.mts": {
+        source: "iana",
+        extensions: ["mts"]
+      },
+      "model/vnd.opengex": {
+        source: "iana",
+        extensions: ["ogex"]
+      },
+      "model/vnd.parasolid.transmit.binary": {
+        source: "iana",
+        extensions: ["x_b"]
+      },
+      "model/vnd.parasolid.transmit.text": {
+        source: "iana",
+        extensions: ["x_t"]
+      },
+      "model/vnd.pytha.pyox": {
+        source: "iana"
+      },
+      "model/vnd.rosette.annotated-data-model": {
+        source: "iana"
+      },
+      "model/vnd.sap.vds": {
+        source: "iana",
+        extensions: ["vds"]
+      },
+      "model/vnd.usdz+zip": {
+        source: "iana",
+        compressible: false,
+        extensions: ["usdz"]
+      },
+      "model/vnd.valve.source.compiled-map": {
+        source: "iana",
+        extensions: ["bsp"]
+      },
+      "model/vnd.vtu": {
+        source: "iana",
+        extensions: ["vtu"]
+      },
+      "model/vrml": {
+        source: "iana",
+        compressible: false,
+        extensions: ["wrl", "vrml"]
+      },
+      "model/x3d+binary": {
+        source: "apache",
+        compressible: false,
+        extensions: ["x3db", "x3dbz"]
+      },
+      "model/x3d+fastinfoset": {
+        source: "iana",
+        extensions: ["x3db"]
+      },
+      "model/x3d+vrml": {
+        source: "apache",
+        compressible: false,
+        extensions: ["x3dv", "x3dvz"]
+      },
+      "model/x3d+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["x3d", "x3dz"]
+      },
+      "model/x3d-vrml": {
+        source: "iana",
+        extensions: ["x3dv"]
+      },
+      "multipart/alternative": {
+        source: "iana",
+        compressible: false
+      },
+      "multipart/appledouble": {
+        source: "iana"
+      },
+      "multipart/byteranges": {
+        source: "iana"
+      },
+      "multipart/digest": {
+        source: "iana"
+      },
+      "multipart/encrypted": {
+        source: "iana",
+        compressible: false
+      },
+      "multipart/form-data": {
+        source: "iana",
+        compressible: false
+      },
+      "multipart/header-set": {
+        source: "iana"
+      },
+      "multipart/mixed": {
+        source: "iana"
+      },
+      "multipart/multilingual": {
+        source: "iana"
+      },
+      "multipart/parallel": {
+        source: "iana"
+      },
+      "multipart/related": {
+        source: "iana",
+        compressible: false
+      },
+      "multipart/report": {
+        source: "iana"
+      },
+      "multipart/signed": {
+        source: "iana",
+        compressible: false
+      },
+      "multipart/vnd.bint.med-plus": {
+        source: "iana"
+      },
+      "multipart/voice-message": {
+        source: "iana"
+      },
+      "multipart/x-mixed-replace": {
+        source: "iana"
+      },
+      "text/1d-interleaved-parityfec": {
+        source: "iana"
+      },
+      "text/cache-manifest": {
+        source: "iana",
+        compressible: true,
+        extensions: ["appcache", "manifest"]
+      },
+      "text/calendar": {
+        source: "iana",
+        extensions: ["ics", "ifb"]
+      },
+      "text/calender": {
+        compressible: true
+      },
+      "text/cmd": {
+        compressible: true
+      },
+      "text/coffeescript": {
+        extensions: ["coffee", "litcoffee"]
+      },
+      "text/cql": {
+        source: "iana"
+      },
+      "text/cql-expression": {
+        source: "iana"
+      },
+      "text/cql-identifier": {
+        source: "iana"
+      },
+      "text/css": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["css"]
+      },
+      "text/csv": {
+        source: "iana",
+        compressible: true,
+        extensions: ["csv"]
+      },
+      "text/csv-schema": {
+        source: "iana"
+      },
+      "text/directory": {
+        source: "iana"
+      },
+      "text/dns": {
+        source: "iana"
+      },
+      "text/ecmascript": {
+        source: "iana"
+      },
+      "text/encaprtp": {
+        source: "iana"
+      },
+      "text/enriched": {
+        source: "iana"
+      },
+      "text/fhirpath": {
+        source: "iana"
+      },
+      "text/flexfec": {
+        source: "iana"
+      },
+      "text/fwdred": {
+        source: "iana"
+      },
+      "text/gff3": {
+        source: "iana"
+      },
+      "text/grammar-ref-list": {
+        source: "iana"
+      },
+      "text/html": {
+        source: "iana",
+        compressible: true,
+        extensions: ["html", "htm", "shtml"]
+      },
+      "text/jade": {
+        extensions: ["jade"]
+      },
+      "text/javascript": {
+        source: "iana",
+        compressible: true
+      },
+      "text/jcr-cnd": {
+        source: "iana"
+      },
+      "text/jsx": {
+        compressible: true,
+        extensions: ["jsx"]
+      },
+      "text/less": {
+        compressible: true,
+        extensions: ["less"]
+      },
+      "text/markdown": {
+        source: "iana",
+        compressible: true,
+        extensions: ["markdown", "md"]
+      },
+      "text/mathml": {
+        source: "nginx",
+        extensions: ["mml"]
+      },
+      "text/mdx": {
+        compressible: true,
+        extensions: ["mdx"]
+      },
+      "text/mizar": {
+        source: "iana"
+      },
+      "text/n3": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["n3"]
+      },
+      "text/parameters": {
+        source: "iana",
+        charset: "UTF-8"
+      },
+      "text/parityfec": {
+        source: "iana"
+      },
+      "text/plain": {
+        source: "iana",
+        compressible: true,
+        extensions: ["txt", "text", "conf", "def", "list", "log", "in", "ini"]
+      },
+      "text/provenance-notation": {
+        source: "iana",
+        charset: "UTF-8"
+      },
+      "text/prs.fallenstein.rst": {
+        source: "iana"
+      },
+      "text/prs.lines.tag": {
+        source: "iana",
+        extensions: ["dsc"]
+      },
+      "text/prs.prop.logic": {
+        source: "iana"
+      },
+      "text/raptorfec": {
+        source: "iana"
+      },
+      "text/red": {
+        source: "iana"
+      },
+      "text/rfc822-headers": {
+        source: "iana"
+      },
+      "text/richtext": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rtx"]
+      },
+      "text/rtf": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rtf"]
+      },
+      "text/rtp-enc-aescm128": {
+        source: "iana"
+      },
+      "text/rtploopback": {
+        source: "iana"
+      },
+      "text/rtx": {
+        source: "iana"
+      },
+      "text/sgml": {
+        source: "iana",
+        extensions: ["sgml", "sgm"]
+      },
+      "text/shaclc": {
+        source: "iana"
+      },
+      "text/shex": {
+        source: "iana",
+        extensions: ["shex"]
+      },
+      "text/slim": {
+        extensions: ["slim", "slm"]
+      },
+      "text/spdx": {
+        source: "iana",
+        extensions: ["spdx"]
+      },
+      "text/strings": {
+        source: "iana"
+      },
+      "text/stylus": {
+        extensions: ["stylus", "styl"]
+      },
+      "text/t140": {
+        source: "iana"
+      },
+      "text/tab-separated-values": {
+        source: "iana",
+        compressible: true,
+        extensions: ["tsv"]
+      },
+      "text/troff": {
+        source: "iana",
+        extensions: ["t", "tr", "roff", "man", "me", "ms"]
+      },
+      "text/turtle": {
+        source: "iana",
+        charset: "UTF-8",
+        extensions: ["ttl"]
+      },
+      "text/ulpfec": {
+        source: "iana"
+      },
+      "text/uri-list": {
+        source: "iana",
+        compressible: true,
+        extensions: ["uri", "uris", "urls"]
+      },
+      "text/vcard": {
+        source: "iana",
+        compressible: true,
+        extensions: ["vcard"]
+      },
+      "text/vnd.a": {
+        source: "iana"
+      },
+      "text/vnd.abc": {
+        source: "iana"
+      },
+      "text/vnd.ascii-art": {
+        source: "iana"
+      },
+      "text/vnd.curl": {
+        source: "iana",
+        extensions: ["curl"]
+      },
+      "text/vnd.curl.dcurl": {
+        source: "apache",
+        extensions: ["dcurl"]
+      },
+      "text/vnd.curl.mcurl": {
+        source: "apache",
+        extensions: ["mcurl"]
+      },
+      "text/vnd.curl.scurl": {
+        source: "apache",
+        extensions: ["scurl"]
+      },
+      "text/vnd.debian.copyright": {
+        source: "iana",
+        charset: "UTF-8"
+      },
+      "text/vnd.dmclientscript": {
+        source: "iana"
+      },
+      "text/vnd.dvb.subtitle": {
+        source: "iana",
+        extensions: ["sub"]
+      },
+      "text/vnd.esmertec.theme-descriptor": {
+        source: "iana",
+        charset: "UTF-8"
+      },
+      "text/vnd.familysearch.gedcom": {
+        source: "iana",
+        extensions: ["ged"]
+      },
+      "text/vnd.ficlab.flt": {
+        source: "iana"
+      },
+      "text/vnd.fly": {
+        source: "iana",
+        extensions: ["fly"]
+      },
+      "text/vnd.fmi.flexstor": {
+        source: "iana",
+        extensions: ["flx"]
+      },
+      "text/vnd.gml": {
+        source: "iana"
+      },
+      "text/vnd.graphviz": {
+        source: "iana",
+        extensions: ["gv"]
+      },
+      "text/vnd.hans": {
+        source: "iana"
+      },
+      "text/vnd.hgl": {
+        source: "iana"
+      },
+      "text/vnd.in3d.3dml": {
+        source: "iana",
+        extensions: ["3dml"]
+      },
+      "text/vnd.in3d.spot": {
+        source: "iana",
+        extensions: ["spot"]
+      },
+      "text/vnd.iptc.newsml": {
+        source: "iana"
+      },
+      "text/vnd.iptc.nitf": {
+        source: "iana"
+      },
+      "text/vnd.latex-z": {
+        source: "iana"
+      },
+      "text/vnd.motorola.reflex": {
+        source: "iana"
+      },
+      "text/vnd.ms-mediapackage": {
+        source: "iana"
+      },
+      "text/vnd.net2phone.commcenter.command": {
+        source: "iana"
+      },
+      "text/vnd.radisys.msml-basic-layout": {
+        source: "iana"
+      },
+      "text/vnd.senx.warpscript": {
+        source: "iana"
+      },
+      "text/vnd.si.uricatalogue": {
+        source: "iana"
+      },
+      "text/vnd.sosi": {
+        source: "iana"
+      },
+      "text/vnd.sun.j2me.app-descriptor": {
+        source: "iana",
+        charset: "UTF-8",
+        extensions: ["jad"]
+      },
+      "text/vnd.trolltech.linguist": {
+        source: "iana",
+        charset: "UTF-8"
+      },
+      "text/vnd.wap.si": {
+        source: "iana"
+      },
+      "text/vnd.wap.sl": {
+        source: "iana"
+      },
+      "text/vnd.wap.wml": {
+        source: "iana",
+        extensions: ["wml"]
+      },
+      "text/vnd.wap.wmlscript": {
+        source: "iana",
+        extensions: ["wmls"]
+      },
+      "text/vtt": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["vtt"]
+      },
+      "text/x-asm": {
+        source: "apache",
+        extensions: ["s", "asm"]
+      },
+      "text/x-c": {
+        source: "apache",
+        extensions: ["c", "cc", "cxx", "cpp", "h", "hh", "dic"]
+      },
+      "text/x-component": {
+        source: "nginx",
+        extensions: ["htc"]
+      },
+      "text/x-fortran": {
+        source: "apache",
+        extensions: ["f", "for", "f77", "f90"]
+      },
+      "text/x-gwt-rpc": {
+        compressible: true
+      },
+      "text/x-handlebars-template": {
+        extensions: ["hbs"]
+      },
+      "text/x-java-source": {
+        source: "apache",
+        extensions: ["java"]
+      },
+      "text/x-jquery-tmpl": {
+        compressible: true
+      },
+      "text/x-lua": {
+        extensions: ["lua"]
+      },
+      "text/x-markdown": {
+        compressible: true,
+        extensions: ["mkd"]
+      },
+      "text/x-nfo": {
+        source: "apache",
+        extensions: ["nfo"]
+      },
+      "text/x-opml": {
+        source: "apache",
+        extensions: ["opml"]
+      },
+      "text/x-org": {
+        compressible: true,
+        extensions: ["org"]
+      },
+      "text/x-pascal": {
+        source: "apache",
+        extensions: ["p", "pas"]
+      },
+      "text/x-processing": {
+        compressible: true,
+        extensions: ["pde"]
+      },
+      "text/x-sass": {
+        extensions: ["sass"]
+      },
+      "text/x-scss": {
+        extensions: ["scss"]
+      },
+      "text/x-setext": {
+        source: "apache",
+        extensions: ["etx"]
+      },
+      "text/x-sfv": {
+        source: "apache",
+        extensions: ["sfv"]
+      },
+      "text/x-suse-ymp": {
+        compressible: true,
+        extensions: ["ymp"]
+      },
+      "text/x-uuencode": {
+        source: "apache",
+        extensions: ["uu"]
+      },
+      "text/x-vcalendar": {
+        source: "apache",
+        extensions: ["vcs"]
+      },
+      "text/x-vcard": {
+        source: "apache",
+        extensions: ["vcf"]
+      },
+      "text/xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xml"]
+      },
+      "text/xml-external-parsed-entity": {
+        source: "iana"
+      },
+      "text/yaml": {
+        compressible: true,
+        extensions: ["yaml", "yml"]
+      },
+      "video/1d-interleaved-parityfec": {
+        source: "iana"
+      },
+      "video/3gpp": {
+        source: "iana",
+        extensions: ["3gp", "3gpp"]
+      },
+      "video/3gpp-tt": {
+        source: "iana"
+      },
+      "video/3gpp2": {
+        source: "iana",
+        extensions: ["3g2"]
+      },
+      "video/av1": {
+        source: "iana"
+      },
+      "video/bmpeg": {
+        source: "iana"
+      },
+      "video/bt656": {
+        source: "iana"
+      },
+      "video/celb": {
+        source: "iana"
+      },
+      "video/dv": {
+        source: "iana"
+      },
+      "video/encaprtp": {
+        source: "iana"
+      },
+      "video/ffv1": {
+        source: "iana"
+      },
+      "video/flexfec": {
+        source: "iana"
+      },
+      "video/h261": {
+        source: "iana",
+        extensions: ["h261"]
+      },
+      "video/h263": {
+        source: "iana",
+        extensions: ["h263"]
+      },
+      "video/h263-1998": {
+        source: "iana"
+      },
+      "video/h263-2000": {
+        source: "iana"
+      },
+      "video/h264": {
+        source: "iana",
+        extensions: ["h264"]
+      },
+      "video/h264-rcdo": {
+        source: "iana"
+      },
+      "video/h264-svc": {
+        source: "iana"
+      },
+      "video/h265": {
+        source: "iana"
+      },
+      "video/iso.segment": {
+        source: "iana",
+        extensions: ["m4s"]
+      },
+      "video/jpeg": {
+        source: "iana",
+        extensions: ["jpgv"]
+      },
+      "video/jpeg2000": {
+        source: "iana"
+      },
+      "video/jpm": {
+        source: "apache",
+        extensions: ["jpm", "jpgm"]
+      },
+      "video/jxsv": {
+        source: "iana"
+      },
+      "video/mj2": {
+        source: "iana",
+        extensions: ["mj2", "mjp2"]
+      },
+      "video/mp1s": {
+        source: "iana"
+      },
+      "video/mp2p": {
+        source: "iana"
+      },
+      "video/mp2t": {
+        source: "iana",
+        extensions: ["ts"]
+      },
+      "video/mp4": {
+        source: "iana",
+        compressible: false,
+        extensions: ["mp4", "mp4v", "mpg4"]
+      },
+      "video/mp4v-es": {
+        source: "iana"
+      },
+      "video/mpeg": {
+        source: "iana",
+        compressible: false,
+        extensions: ["mpeg", "mpg", "mpe", "m1v", "m2v"]
+      },
+      "video/mpeg4-generic": {
+        source: "iana"
+      },
+      "video/mpv": {
+        source: "iana"
+      },
+      "video/nv": {
+        source: "iana"
+      },
+      "video/ogg": {
+        source: "iana",
+        compressible: false,
+        extensions: ["ogv"]
+      },
+      "video/parityfec": {
+        source: "iana"
+      },
+      "video/pointer": {
+        source: "iana"
+      },
+      "video/quicktime": {
+        source: "iana",
+        compressible: false,
+        extensions: ["qt", "mov"]
+      },
+      "video/raptorfec": {
+        source: "iana"
+      },
+      "video/raw": {
+        source: "iana"
+      },
+      "video/rtp-enc-aescm128": {
+        source: "iana"
+      },
+      "video/rtploopback": {
+        source: "iana"
+      },
+      "video/rtx": {
+        source: "iana"
+      },
+      "video/scip": {
+        source: "iana"
+      },
+      "video/smpte291": {
+        source: "iana"
+      },
+      "video/smpte292m": {
+        source: "iana"
+      },
+      "video/ulpfec": {
+        source: "iana"
+      },
+      "video/vc1": {
+        source: "iana"
+      },
+      "video/vc2": {
+        source: "iana"
+      },
+      "video/vnd.cctv": {
+        source: "iana"
+      },
+      "video/vnd.dece.hd": {
+        source: "iana",
+        extensions: ["uvh", "uvvh"]
+      },
+      "video/vnd.dece.mobile": {
+        source: "iana",
+        extensions: ["uvm", "uvvm"]
+      },
+      "video/vnd.dece.mp4": {
+        source: "iana"
+      },
+      "video/vnd.dece.pd": {
+        source: "iana",
+        extensions: ["uvp", "uvvp"]
+      },
+      "video/vnd.dece.sd": {
+        source: "iana",
+        extensions: ["uvs", "uvvs"]
+      },
+      "video/vnd.dece.video": {
+        source: "iana",
+        extensions: ["uvv", "uvvv"]
+      },
+      "video/vnd.directv.mpeg": {
+        source: "iana"
+      },
+      "video/vnd.directv.mpeg-tts": {
+        source: "iana"
+      },
+      "video/vnd.dlna.mpeg-tts": {
+        source: "iana"
+      },
+      "video/vnd.dvb.file": {
+        source: "iana",
+        extensions: ["dvb"]
+      },
+      "video/vnd.fvt": {
+        source: "iana",
+        extensions: ["fvt"]
+      },
+      "video/vnd.hns.video": {
+        source: "iana"
+      },
+      "video/vnd.iptvforum.1dparityfec-1010": {
+        source: "iana"
+      },
+      "video/vnd.iptvforum.1dparityfec-2005": {
+        source: "iana"
+      },
+      "video/vnd.iptvforum.2dparityfec-1010": {
+        source: "iana"
+      },
+      "video/vnd.iptvforum.2dparityfec-2005": {
+        source: "iana"
+      },
+      "video/vnd.iptvforum.ttsavc": {
+        source: "iana"
+      },
+      "video/vnd.iptvforum.ttsmpeg2": {
+        source: "iana"
+      },
+      "video/vnd.motorola.video": {
+        source: "iana"
+      },
+      "video/vnd.motorola.videop": {
+        source: "iana"
+      },
+      "video/vnd.mpegurl": {
+        source: "iana",
+        extensions: ["mxu", "m4u"]
+      },
+      "video/vnd.ms-playready.media.pyv": {
+        source: "iana",
+        extensions: ["pyv"]
+      },
+      "video/vnd.nokia.interleaved-multimedia": {
+        source: "iana"
+      },
+      "video/vnd.nokia.mp4vr": {
+        source: "iana"
+      },
+      "video/vnd.nokia.videovoip": {
+        source: "iana"
+      },
+      "video/vnd.objectvideo": {
+        source: "iana"
+      },
+      "video/vnd.radgamettools.bink": {
+        source: "iana"
+      },
+      "video/vnd.radgamettools.smacker": {
+        source: "iana"
+      },
+      "video/vnd.sealed.mpeg1": {
+        source: "iana"
+      },
+      "video/vnd.sealed.mpeg4": {
+        source: "iana"
+      },
+      "video/vnd.sealed.swf": {
+        source: "iana"
+      },
+      "video/vnd.sealedmedia.softseal.mov": {
+        source: "iana"
+      },
+      "video/vnd.uvvu.mp4": {
+        source: "iana",
+        extensions: ["uvu", "uvvu"]
+      },
+      "video/vnd.vivo": {
+        source: "iana",
+        extensions: ["viv"]
+      },
+      "video/vnd.youtube.yt": {
+        source: "iana"
+      },
+      "video/vp8": {
+        source: "iana"
+      },
+      "video/vp9": {
+        source: "iana"
+      },
+      "video/webm": {
+        source: "apache",
+        compressible: false,
+        extensions: ["webm"]
+      },
+      "video/x-f4v": {
+        source: "apache",
+        extensions: ["f4v"]
+      },
+      "video/x-fli": {
+        source: "apache",
+        extensions: ["fli"]
+      },
+      "video/x-flv": {
+        source: "apache",
+        compressible: false,
+        extensions: ["flv"]
+      },
+      "video/x-m4v": {
+        source: "apache",
+        extensions: ["m4v"]
+      },
+      "video/x-matroska": {
+        source: "apache",
+        compressible: false,
+        extensions: ["mkv", "mk3d", "mks"]
+      },
+      "video/x-mng": {
+        source: "apache",
+        extensions: ["mng"]
+      },
+      "video/x-ms-asf": {
+        source: "apache",
+        extensions: ["asf", "asx"]
+      },
+      "video/x-ms-vob": {
+        source: "apache",
+        extensions: ["vob"]
+      },
+      "video/x-ms-wm": {
+        source: "apache",
+        extensions: ["wm"]
+      },
+      "video/x-ms-wmv": {
+        source: "apache",
+        compressible: false,
+        extensions: ["wmv"]
+      },
+      "video/x-ms-wmx": {
+        source: "apache",
+        extensions: ["wmx"]
+      },
+      "video/x-ms-wvx": {
+        source: "apache",
+        extensions: ["wvx"]
+      },
+      "video/x-msvideo": {
+        source: "apache",
+        extensions: ["avi"]
+      },
+      "video/x-sgi-movie": {
+        source: "apache",
+        extensions: ["movie"]
+      },
+      "video/x-smv": {
+        source: "apache",
+        extensions: ["smv"]
+      },
+      "x-conference/x-cooltalk": {
+        source: "apache",
+        extensions: ["ice"]
+      },
+      "x-shader/x-fragment": {
+        compressible: true
+      },
+      "x-shader/x-vertex": {
+        compressible: true
+      }
     };
   }
 });
 
-// node_modules/axios/lib/helpers/buildURL.js
-var require_buildURL = __commonJS({
-  "node_modules/axios/lib/helpers/buildURL.js"(exports, module2) {
+// node_modules/mime-db/index.js
+var require_mime_db = __commonJS({
+  "node_modules/mime-db/index.js"(exports, module2) {
+    module2.exports = require_db();
+  }
+});
+
+// node_modules/mime-types/index.js
+var require_mime_types = __commonJS({
+  "node_modules/mime-types/index.js"(exports) {
     "use strict";
-    var utils = require_utils2();
-    function encode(val) {
-      return encodeURIComponent(val).replace(/%3A/gi, ":").replace(/%24/g, "$").replace(/%2C/gi, ",").replace(/%20/g, "+").replace(/%5B/gi, "[").replace(/%5D/gi, "]");
-    }
-    module2.exports = function buildURL(url, params, paramsSerializer) {
-      if (!params) {
-        return url;
+    var db = require_mime_db();
+    var extname = require("path").extname;
+    var EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/;
+    var TEXT_TYPE_REGEXP = /^text\//i;
+    exports.charset = charset;
+    exports.charsets = { lookup: charset };
+    exports.contentType = contentType;
+    exports.extension = extension;
+    exports.extensions = /* @__PURE__ */ Object.create(null);
+    exports.lookup = lookup;
+    exports.types = /* @__PURE__ */ Object.create(null);
+    populateMaps(exports.extensions, exports.types);
+    function charset(type) {
+      if (!type || typeof type !== "string") {
+        return false;
       }
-      var serializedParams;
-      if (paramsSerializer) {
-        serializedParams = paramsSerializer(params);
-      } else if (utils.isURLSearchParams(params)) {
-        serializedParams = params.toString();
-      } else {
-        var parts = [];
-        utils.forEach(params, function serialize(val, key2) {
-          if (val === null || typeof val === "undefined") {
-            return;
-          }
-          if (utils.isArray(val)) {
-            key2 = key2 + "[]";
-          } else {
-            val = [val];
-          }
-          utils.forEach(val, function parseValue(v) {
-            if (utils.isDate(v)) {
-              v = v.toISOString();
-            } else if (utils.isObject(v)) {
-              v = JSON.stringify(v);
+      var match = EXTRACT_TYPE_REGEXP.exec(type);
+      var mime = match && db[match[1].toLowerCase()];
+      if (mime && mime.charset) {
+        return mime.charset;
+      }
+      if (match && TEXT_TYPE_REGEXP.test(match[1])) {
+        return "UTF-8";
+      }
+      return false;
+    }
+    function contentType(str) {
+      if (!str || typeof str !== "string") {
+        return false;
+      }
+      var mime = str.indexOf("/") === -1 ? exports.lookup(str) : str;
+      if (!mime) {
+        return false;
+      }
+      if (mime.indexOf("charset") === -1) {
+        var charset2 = exports.charset(mime);
+        if (charset2)
+          mime += "; charset=" + charset2.toLowerCase();
+      }
+      return mime;
+    }
+    function extension(type) {
+      if (!type || typeof type !== "string") {
+        return false;
+      }
+      var match = EXTRACT_TYPE_REGEXP.exec(type);
+      var exts = match && exports.extensions[match[1].toLowerCase()];
+      if (!exts || !exts.length) {
+        return false;
+      }
+      return exts[0];
+    }
+    function lookup(path) {
+      if (!path || typeof path !== "string") {
+        return false;
+      }
+      var extension2 = extname("x." + path).toLowerCase().substr(1);
+      if (!extension2) {
+        return false;
+      }
+      return exports.types[extension2] || false;
+    }
+    function populateMaps(extensions, types3) {
+      var preference = ["nginx", "apache", void 0, "iana"];
+      Object.keys(db).forEach(function forEachMimeType(type) {
+        var mime = db[type];
+        var exts = mime.extensions;
+        if (!exts || !exts.length) {
+          return;
+        }
+        extensions[type] = exts;
+        for (var i2 = 0; i2 < exts.length; i2++) {
+          var extension2 = exts[i2];
+          if (types3[extension2]) {
+            var from = preference.indexOf(db[types3[extension2]].source);
+            var to = preference.indexOf(mime.source);
+            if (types3[extension2] !== "application/octet-stream" && (from > to || from === to && types3[extension2].substr(0, 12) === "application/")) {
+              continue;
             }
-            parts.push(encode(key2) + "=" + encode(v));
-          });
-        });
-        serializedParams = parts.join("&");
-      }
-      if (serializedParams) {
-        var hashmarkIndex = url.indexOf("#");
-        if (hashmarkIndex !== -1) {
-          url = url.slice(0, hashmarkIndex);
+          }
+          types3[extension2] = type;
         }
-        url += (url.indexOf("?") === -1 ? "?" : "&") + serializedParams;
-      }
-      return url;
-    };
-  }
-});
-
-// node_modules/axios/lib/core/InterceptorManager.js
-var require_InterceptorManager = __commonJS({
-  "node_modules/axios/lib/core/InterceptorManager.js"(exports, module2) {
-    "use strict";
-    var utils = require_utils2();
-    function InterceptorManager() {
-      this.handlers = [];
+      });
     }
-    InterceptorManager.prototype.use = function use(fulfilled, rejected, options) {
-      this.handlers.push({
-        fulfilled,
-        rejected,
-        synchronous: options ? options.synchronous : false,
-        runWhen: options ? options.runWhen : null
-      });
-      return this.handlers.length - 1;
-    };
-    InterceptorManager.prototype.eject = function eject(id) {
-      if (this.handlers[id]) {
-        this.handlers[id] = null;
-      }
-    };
-    InterceptorManager.prototype.forEach = function forEach(fn) {
-      utils.forEach(this.handlers, function forEachHandler(h2) {
-        if (h2 !== null) {
-          fn(h2);
-        }
-      });
-    };
-    module2.exports = InterceptorManager;
   }
 });
 
-// node_modules/axios/lib/helpers/normalizeHeaderName.js
-var require_normalizeHeaderName = __commonJS({
-  "node_modules/axios/lib/helpers/normalizeHeaderName.js"(exports, module2) {
-    "use strict";
-    var utils = require_utils2();
-    module2.exports = function normalizeHeaderName(headers, normalizedName) {
-      utils.forEach(headers, function processHeader(value, name) {
-        if (name !== normalizedName && name.toUpperCase() === normalizedName.toUpperCase()) {
-          headers[normalizedName] = value;
-          delete headers[name];
-        }
-      });
-    };
-  }
-});
-
-// node_modules/axios/lib/core/enhanceError.js
-var require_enhanceError = __commonJS({
-  "node_modules/axios/lib/core/enhanceError.js"(exports, module2) {
-    "use strict";
-    module2.exports = function enhanceError(error, config, code, request, response) {
-      error.config = config;
-      if (code) {
-        error.code = code;
-      }
-      error.request = request;
-      error.response = response;
-      error.isAxiosError = true;
-      error.toJSON = function toJSON2() {
-        return {
-          message: this.message,
-          name: this.name,
-          description: this.description,
-          number: this.number,
-          fileName: this.fileName,
-          lineNumber: this.lineNumber,
-          columnNumber: this.columnNumber,
-          stack: this.stack,
-          config: this.config,
-          code: this.code
-        };
-      };
-      return error;
-    };
-  }
-});
-
-// node_modules/axios/lib/core/createError.js
-var require_createError = __commonJS({
-  "node_modules/axios/lib/core/createError.js"(exports, module2) {
-    "use strict";
-    var enhanceError = require_enhanceError();
-    module2.exports = function createError(message, config, code, request, response) {
-      var error = new Error(message);
-      return enhanceError(error, config, code, request, response);
-    };
-  }
-});
-
-// node_modules/axios/lib/core/settle.js
-var require_settle = __commonJS({
-  "node_modules/axios/lib/core/settle.js"(exports, module2) {
-    "use strict";
-    var createError = require_createError();
-    module2.exports = function settle(resolve, reject, response) {
-      var validateStatus = response.config.validateStatus;
-      if (!response.status || !validateStatus || validateStatus(response.status)) {
-        resolve(response);
+// node_modules/asynckit/lib/defer.js
+var require_defer = __commonJS({
+  "node_modules/asynckit/lib/defer.js"(exports, module2) {
+    module2.exports = defer;
+    function defer(fn) {
+      var nextTick = typeof setImmediate == "function" ? setImmediate : typeof process == "object" && typeof process.nextTick == "function" ? process.nextTick : null;
+      if (nextTick) {
+        nextTick(fn);
       } else {
-        reject(createError("Request failed with status code " + response.status, response.config, null, response.request, response));
+        setTimeout(fn, 0);
       }
-    };
+    }
   }
 });
 
-// node_modules/axios/lib/helpers/cookies.js
-var require_cookies = __commonJS({
-  "node_modules/axios/lib/helpers/cookies.js"(exports, module2) {
-    "use strict";
-    var utils = require_utils2();
-    module2.exports = utils.isStandardBrowserEnv() ? function standardBrowserEnv() {
-      return {
-        write: function write2(name, value, expires, path, domain, secure) {
-          var cookie = [];
-          cookie.push(name + "=" + encodeURIComponent(value));
-          if (utils.isNumber(expires)) {
-            cookie.push("expires=" + new Date(expires).toGMTString());
-          }
-          if (utils.isString(path)) {
-            cookie.push("path=" + path);
-          }
-          if (utils.isString(domain)) {
-            cookie.push("domain=" + domain);
-          }
-          if (secure === true) {
-            cookie.push("secure");
-          }
-          document.cookie = cookie.join("; ");
-        },
-        read: function read2(name) {
-          var match = document.cookie.match(new RegExp("(^|;\\s*)(" + name + ")=([^;]*)"));
-          return match ? decodeURIComponent(match[3]) : null;
-        },
-        remove: function remove2(name) {
-          this.write(name, "", Date.now() - 864e5);
-        }
-      };
-    }() : function nonStandardBrowserEnv() {
-      return {
-        write: function write2() {
-        },
-        read: function read2() {
-          return null;
-        },
-        remove: function remove2() {
-        }
-      };
-    }();
-  }
-});
-
-// node_modules/axios/lib/helpers/isAbsoluteURL.js
-var require_isAbsoluteURL = __commonJS({
-  "node_modules/axios/lib/helpers/isAbsoluteURL.js"(exports, module2) {
-    "use strict";
-    module2.exports = function isAbsoluteURL(url) {
-      return /^([a-z][a-z\d\+\-\.]*:)?\/\//i.test(url);
-    };
-  }
-});
-
-// node_modules/axios/lib/helpers/combineURLs.js
-var require_combineURLs = __commonJS({
-  "node_modules/axios/lib/helpers/combineURLs.js"(exports, module2) {
-    "use strict";
-    module2.exports = function combineURLs(baseURL, relativeURL) {
-      return relativeURL ? baseURL.replace(/\/+$/, "") + "/" + relativeURL.replace(/^\/+/, "") : baseURL;
-    };
-  }
-});
-
-// node_modules/axios/lib/core/buildFullPath.js
-var require_buildFullPath = __commonJS({
-  "node_modules/axios/lib/core/buildFullPath.js"(exports, module2) {
-    "use strict";
-    var isAbsoluteURL = require_isAbsoluteURL();
-    var combineURLs = require_combineURLs();
-    module2.exports = function buildFullPath(baseURL, requestedURL) {
-      if (baseURL && !isAbsoluteURL(requestedURL)) {
-        return combineURLs(baseURL, requestedURL);
-      }
-      return requestedURL;
-    };
-  }
-});
-
-// node_modules/axios/lib/helpers/parseHeaders.js
-var require_parseHeaders = __commonJS({
-  "node_modules/axios/lib/helpers/parseHeaders.js"(exports, module2) {
-    "use strict";
-    var utils = require_utils2();
-    var ignoreDuplicateOf = [
-      "age",
-      "authorization",
-      "content-length",
-      "content-type",
-      "etag",
-      "expires",
-      "from",
-      "host",
-      "if-modified-since",
-      "if-unmodified-since",
-      "last-modified",
-      "location",
-      "max-forwards",
-      "proxy-authorization",
-      "referer",
-      "retry-after",
-      "user-agent"
-    ];
-    module2.exports = function parseHeaders(headers) {
-      var parsed = {};
-      var key2;
-      var val;
-      var i2;
-      if (!headers) {
-        return parsed;
-      }
-      utils.forEach(headers.split("\n"), function parser(line) {
-        i2 = line.indexOf(":");
-        key2 = utils.trim(line.substr(0, i2)).toLowerCase();
-        val = utils.trim(line.substr(i2 + 1));
-        if (key2) {
-          if (parsed[key2] && ignoreDuplicateOf.indexOf(key2) >= 0) {
-            return;
-          }
-          if (key2 === "set-cookie") {
-            parsed[key2] = (parsed[key2] ? parsed[key2] : []).concat([val]);
-          } else {
-            parsed[key2] = parsed[key2] ? parsed[key2] + ", " + val : val;
-          }
-        }
+// node_modules/asynckit/lib/async.js
+var require_async = __commonJS({
+  "node_modules/asynckit/lib/async.js"(exports, module2) {
+    var defer = require_defer();
+    module2.exports = async;
+    function async(callback) {
+      var isAsync = false;
+      defer(function() {
+        isAsync = true;
       });
-      return parsed;
-    };
-  }
-});
-
-// node_modules/axios/lib/helpers/isURLSameOrigin.js
-var require_isURLSameOrigin = __commonJS({
-  "node_modules/axios/lib/helpers/isURLSameOrigin.js"(exports, module2) {
-    "use strict";
-    var utils = require_utils2();
-    module2.exports = utils.isStandardBrowserEnv() ? function standardBrowserEnv() {
-      var msie = /(msie|trident)/i.test(navigator.userAgent);
-      var urlParsingNode = document.createElement("a");
-      var originURL;
-      function resolveURL(url) {
-        var href = url;
-        if (msie) {
-          urlParsingNode.setAttribute("href", href);
-          href = urlParsingNode.href;
-        }
-        urlParsingNode.setAttribute("href", href);
-        return {
-          href: urlParsingNode.href,
-          protocol: urlParsingNode.protocol ? urlParsingNode.protocol.replace(/:$/, "") : "",
-          host: urlParsingNode.host,
-          search: urlParsingNode.search ? urlParsingNode.search.replace(/^\?/, "") : "",
-          hash: urlParsingNode.hash ? urlParsingNode.hash.replace(/^#/, "") : "",
-          hostname: urlParsingNode.hostname,
-          port: urlParsingNode.port,
-          pathname: urlParsingNode.pathname.charAt(0) === "/" ? urlParsingNode.pathname : "/" + urlParsingNode.pathname
-        };
-      }
-      originURL = resolveURL(window.location.href);
-      return function isURLSameOrigin(requestURL) {
-        var parsed = utils.isString(requestURL) ? resolveURL(requestURL) : requestURL;
-        return parsed.protocol === originURL.protocol && parsed.host === originURL.host;
-      };
-    }() : function nonStandardBrowserEnv() {
-      return function isURLSameOrigin() {
-        return true;
-      };
-    }();
-  }
-});
-
-// node_modules/axios/lib/adapters/xhr.js
-var require_xhr = __commonJS({
-  "node_modules/axios/lib/adapters/xhr.js"(exports, module2) {
-    "use strict";
-    var utils = require_utils2();
-    var settle = require_settle();
-    var cookies = require_cookies();
-    var buildURL = require_buildURL();
-    var buildFullPath = require_buildFullPath();
-    var parseHeaders = require_parseHeaders();
-    var isURLSameOrigin = require_isURLSameOrigin();
-    var createError = require_createError();
-    module2.exports = function xhrAdapter(config) {
-      return new Promise(function dispatchXhrRequest(resolve, reject) {
-        var requestData = config.data;
-        var requestHeaders = config.headers;
-        var responseType = config.responseType;
-        if (utils.isFormData(requestData)) {
-          delete requestHeaders["Content-Type"];
-        }
-        var request = new XMLHttpRequest();
-        if (config.auth) {
-          var username = config.auth.username || "";
-          var password = config.auth.password ? unescape(encodeURIComponent(config.auth.password)) : "";
-          requestHeaders.Authorization = "Basic " + btoa(username + ":" + password);
-        }
-        var fullPath = buildFullPath(config.baseURL, config.url);
-        request.open(config.method.toUpperCase(), buildURL(fullPath, config.params, config.paramsSerializer), true);
-        request.timeout = config.timeout;
-        function onloadend() {
-          if (!request) {
-            return;
-          }
-          var responseHeaders = "getAllResponseHeaders" in request ? parseHeaders(request.getAllResponseHeaders()) : null;
-          var responseData = !responseType || responseType === "text" || responseType === "json" ? request.responseText : request.response;
-          var response = {
-            data: responseData,
-            status: request.status,
-            statusText: request.statusText,
-            headers: responseHeaders,
-            config,
-            request
-          };
-          settle(resolve, reject, response);
-          request = null;
-        }
-        if ("onloadend" in request) {
-          request.onloadend = onloadend;
+      return function async_callback(err, result) {
+        if (isAsync) {
+          callback(err, result);
         } else {
-          request.onreadystatechange = function handleLoad() {
-            if (!request || request.readyState !== 4) {
-              return;
-            }
-            if (request.status === 0 && !(request.responseURL && request.responseURL.indexOf("file:") === 0)) {
-              return;
-            }
-            setTimeout(onloadend);
-          };
+          defer(function nextTick_callback() {
+            callback(err, result);
+          });
         }
-        request.onabort = function handleAbort() {
-          if (!request) {
+      };
+    }
+  }
+});
+
+// node_modules/asynckit/lib/abort.js
+var require_abort = __commonJS({
+  "node_modules/asynckit/lib/abort.js"(exports, module2) {
+    module2.exports = abort;
+    function abort(state) {
+      Object.keys(state.jobs).forEach(clean.bind(state));
+      state.jobs = {};
+    }
+    function clean(key2) {
+      if (typeof this.jobs[key2] == "function") {
+        this.jobs[key2]();
+      }
+    }
+  }
+});
+
+// node_modules/asynckit/lib/iterate.js
+var require_iterate = __commonJS({
+  "node_modules/asynckit/lib/iterate.js"(exports, module2) {
+    var async = require_async();
+    var abort = require_abort();
+    module2.exports = iterate;
+    function iterate(list, iterator, state, callback) {
+      var key2 = state["keyedList"] ? state["keyedList"][state.index] : state.index;
+      state.jobs[key2] = runJob(iterator, key2, list[key2], function(error, output) {
+        if (!(key2 in state.jobs)) {
+          return;
+        }
+        delete state.jobs[key2];
+        if (error) {
+          abort(state);
+        } else {
+          state.results[key2] = output;
+        }
+        callback(error, state.results);
+      });
+    }
+    function runJob(iterator, key2, item, callback) {
+      var aborter;
+      if (iterator.length == 2) {
+        aborter = iterator(item, async(callback));
+      } else {
+        aborter = iterator(item, key2, async(callback));
+      }
+      return aborter;
+    }
+  }
+});
+
+// node_modules/asynckit/lib/state.js
+var require_state = __commonJS({
+  "node_modules/asynckit/lib/state.js"(exports, module2) {
+    module2.exports = state;
+    function state(list, sortMethod) {
+      var isNamedList = !Array.isArray(list), initState = {
+        index: 0,
+        keyedList: isNamedList || sortMethod ? Object.keys(list) : null,
+        jobs: {},
+        results: isNamedList ? {} : [],
+        size: isNamedList ? Object.keys(list).length : list.length
+      };
+      if (sortMethod) {
+        initState.keyedList.sort(isNamedList ? sortMethod : function(a, b) {
+          return sortMethod(list[a], list[b]);
+        });
+      }
+      return initState;
+    }
+  }
+});
+
+// node_modules/asynckit/lib/terminator.js
+var require_terminator = __commonJS({
+  "node_modules/asynckit/lib/terminator.js"(exports, module2) {
+    var abort = require_abort();
+    var async = require_async();
+    module2.exports = terminator;
+    function terminator(callback) {
+      if (!Object.keys(this.jobs).length) {
+        return;
+      }
+      this.index = this.size;
+      abort(this);
+      async(callback)(null, this.results);
+    }
+  }
+});
+
+// node_modules/asynckit/parallel.js
+var require_parallel = __commonJS({
+  "node_modules/asynckit/parallel.js"(exports, module2) {
+    var iterate = require_iterate();
+    var initState = require_state();
+    var terminator = require_terminator();
+    module2.exports = parallel;
+    function parallel(list, iterator, callback) {
+      var state = initState(list);
+      while (state.index < (state["keyedList"] || list).length) {
+        iterate(list, iterator, state, function(error, result) {
+          if (error) {
+            callback(error, result);
             return;
           }
-          reject(createError("Request aborted", config, "ECONNABORTED", request));
-          request = null;
-        };
-        request.onerror = function handleError() {
-          reject(createError("Network Error", config, null, request));
-          request = null;
-        };
-        request.ontimeout = function handleTimeout() {
-          var timeoutErrorMessage = "timeout of " + config.timeout + "ms exceeded";
-          if (config.timeoutErrorMessage) {
-            timeoutErrorMessage = config.timeoutErrorMessage;
+          if (Object.keys(state.jobs).length === 0) {
+            callback(null, state.results);
+            return;
           }
-          reject(createError(timeoutErrorMessage, config, config.transitional && config.transitional.clarifyTimeoutError ? "ETIMEDOUT" : "ECONNABORTED", request));
-          request = null;
-        };
-        if (utils.isStandardBrowserEnv()) {
-          var xsrfValue = (config.withCredentials || isURLSameOrigin(fullPath)) && config.xsrfCookieName ? cookies.read(config.xsrfCookieName) : void 0;
-          if (xsrfValue) {
-            requestHeaders[config.xsrfHeaderName] = xsrfValue;
-          }
+        });
+        state.index++;
+      }
+      return terminator.bind(state, callback);
+    }
+  }
+});
+
+// node_modules/asynckit/serialOrdered.js
+var require_serialOrdered = __commonJS({
+  "node_modules/asynckit/serialOrdered.js"(exports, module2) {
+    var iterate = require_iterate();
+    var initState = require_state();
+    var terminator = require_terminator();
+    module2.exports = serialOrdered;
+    module2.exports.ascending = ascending;
+    module2.exports.descending = descending;
+    function serialOrdered(list, iterator, sortMethod, callback) {
+      var state = initState(list, sortMethod);
+      iterate(list, iterator, state, function iteratorHandler(error, result) {
+        if (error) {
+          callback(error, result);
+          return;
         }
-        if ("setRequestHeader" in request) {
-          utils.forEach(requestHeaders, function setRequestHeader(val, key2) {
-            if (typeof requestData === "undefined" && key2.toLowerCase() === "content-type") {
-              delete requestHeaders[key2];
-            } else {
-              request.setRequestHeader(key2, val);
-            }
-          });
+        state.index++;
+        if (state.index < (state["keyedList"] || list).length) {
+          iterate(list, iterator, state, iteratorHandler);
+          return;
         }
-        if (!utils.isUndefined(config.withCredentials)) {
-          request.withCredentials = !!config.withCredentials;
-        }
-        if (responseType && responseType !== "json") {
-          request.responseType = config.responseType;
-        }
-        if (typeof config.onDownloadProgress === "function") {
-          request.addEventListener("progress", config.onDownloadProgress);
-        }
-        if (typeof config.onUploadProgress === "function" && request.upload) {
-          request.upload.addEventListener("progress", config.onUploadProgress);
-        }
-        if (config.cancelToken) {
-          config.cancelToken.promise.then(function onCanceled(cancel) {
-            if (!request) {
+        callback(null, state.results);
+      });
+      return terminator.bind(state, callback);
+    }
+    function ascending(a, b) {
+      return a < b ? -1 : a > b ? 1 : 0;
+    }
+    function descending(a, b) {
+      return -1 * ascending(a, b);
+    }
+  }
+});
+
+// node_modules/asynckit/serial.js
+var require_serial = __commonJS({
+  "node_modules/asynckit/serial.js"(exports, module2) {
+    var serialOrdered = require_serialOrdered();
+    module2.exports = serial;
+    function serial(list, iterator, callback) {
+      return serialOrdered(list, iterator, null, callback);
+    }
+  }
+});
+
+// node_modules/asynckit/index.js
+var require_asynckit = __commonJS({
+  "node_modules/asynckit/index.js"(exports, module2) {
+    module2.exports = {
+      parallel: require_parallel(),
+      serial: require_serial(),
+      serialOrdered: require_serialOrdered()
+    };
+  }
+});
+
+// node_modules/form-data/lib/populate.js
+var require_populate = __commonJS({
+  "node_modules/form-data/lib/populate.js"(exports, module2) {
+    module2.exports = function(dst, src) {
+      Object.keys(src).forEach(function(prop2) {
+        dst[prop2] = dst[prop2] || src[prop2];
+      });
+      return dst;
+    };
+  }
+});
+
+// node_modules/form-data/lib/form_data.js
+var require_form_data = __commonJS({
+  "node_modules/form-data/lib/form_data.js"(exports, module2) {
+    var CombinedStream = require_combined_stream();
+    var util = require("util");
+    var path = require("path");
+    var http3 = require("http");
+    var https2 = require("https");
+    var parseUrl = require("url").parse;
+    var fs3 = require("fs");
+    var Stream3 = require("stream").Stream;
+    var mime = require_mime_types();
+    var asynckit = require_asynckit();
+    var populate = require_populate();
+    module2.exports = FormData4;
+    util.inherits(FormData4, CombinedStream);
+    function FormData4(options) {
+      if (!(this instanceof FormData4)) {
+        return new FormData4(options);
+      }
+      this._overheadLength = 0;
+      this._valueLength = 0;
+      this._valuesToMeasure = [];
+      CombinedStream.call(this);
+      options = options || {};
+      for (var option in options) {
+        this[option] = options[option];
+      }
+    }
+    FormData4.LINE_BREAK = "\r\n";
+    FormData4.DEFAULT_CONTENT_TYPE = "application/octet-stream";
+    FormData4.prototype.append = function(field, value, options) {
+      options = options || {};
+      if (typeof options == "string") {
+        options = { filename: options };
+      }
+      var append2 = CombinedStream.prototype.append.bind(this);
+      if (typeof value == "number") {
+        value = "" + value;
+      }
+      if (util.isArray(value)) {
+        this._error(new Error("Arrays are not supported."));
+        return;
+      }
+      var header = this._multiPartHeader(field, value, options);
+      var footer = this._multiPartFooter();
+      append2(header);
+      append2(value);
+      append2(footer);
+      this._trackLength(header, value, options);
+    };
+    FormData4.prototype._trackLength = function(header, value, options) {
+      var valueLength = 0;
+      if (options.knownLength != null) {
+        valueLength += +options.knownLength;
+      } else if (Buffer.isBuffer(value)) {
+        valueLength = value.length;
+      } else if (typeof value === "string") {
+        valueLength = Buffer.byteLength(value);
+      }
+      this._valueLength += valueLength;
+      this._overheadLength += Buffer.byteLength(header) + FormData4.LINE_BREAK.length;
+      if (!value || !value.path && !(value.readable && value.hasOwnProperty("httpVersion")) && !(value instanceof Stream3)) {
+        return;
+      }
+      if (!options.knownLength) {
+        this._valuesToMeasure.push(value);
+      }
+    };
+    FormData4.prototype._lengthRetriever = function(value, callback) {
+      if (value.hasOwnProperty("fd")) {
+        if (value.end != void 0 && value.end != Infinity && value.start != void 0) {
+          callback(null, value.end + 1 - (value.start ? value.start : 0));
+        } else {
+          fs3.stat(value.path, function(err, stat2) {
+            var fileSize;
+            if (err) {
+              callback(err);
               return;
             }
-            request.abort();
-            reject(cancel);
-            request = null;
+            fileSize = stat2.size - (value.start ? value.start : 0);
+            callback(null, fileSize);
           });
         }
-        if (!requestData) {
-          requestData = null;
+      } else if (value.hasOwnProperty("httpVersion")) {
+        callback(null, +value.headers["content-length"]);
+      } else if (value.hasOwnProperty("httpModule")) {
+        value.on("response", function(response) {
+          value.pause();
+          callback(null, +response.headers["content-length"]);
+        });
+        value.resume();
+      } else {
+        callback("Unknown stream");
+      }
+    };
+    FormData4.prototype._multiPartHeader = function(field, value, options) {
+      if (typeof options.header == "string") {
+        return options.header;
+      }
+      var contentDisposition = this._getContentDisposition(value, options);
+      var contentType = this._getContentType(value, options);
+      var contents = "";
+      var headers = {
+        "Content-Disposition": ["form-data", 'name="' + field + '"'].concat(contentDisposition || []),
+        "Content-Type": [].concat(contentType || [])
+      };
+      if (typeof options.header == "object") {
+        populate(headers, options.header);
+      }
+      var header;
+      for (var prop2 in headers) {
+        if (!headers.hasOwnProperty(prop2))
+          continue;
+        header = headers[prop2];
+        if (header == null) {
+          continue;
         }
-        request.send(requestData);
+        if (!Array.isArray(header)) {
+          header = [header];
+        }
+        if (header.length) {
+          contents += prop2 + ": " + header.join("; ") + FormData4.LINE_BREAK;
+        }
+      }
+      return "--" + this.getBoundary() + FormData4.LINE_BREAK + contents + FormData4.LINE_BREAK;
+    };
+    FormData4.prototype._getContentDisposition = function(value, options) {
+      var filename, contentDisposition;
+      if (typeof options.filepath === "string") {
+        filename = path.normalize(options.filepath).replace(/\\/g, "/");
+      } else if (options.filename || value.name || value.path) {
+        filename = path.basename(options.filename || value.name || value.path);
+      } else if (value.readable && value.hasOwnProperty("httpVersion")) {
+        filename = path.basename(value.client._httpMessage.path || "");
+      }
+      if (filename) {
+        contentDisposition = 'filename="' + filename + '"';
+      }
+      return contentDisposition;
+    };
+    FormData4.prototype._getContentType = function(value, options) {
+      var contentType = options.contentType;
+      if (!contentType && value.name) {
+        contentType = mime.lookup(value.name);
+      }
+      if (!contentType && value.path) {
+        contentType = mime.lookup(value.path);
+      }
+      if (!contentType && value.readable && value.hasOwnProperty("httpVersion")) {
+        contentType = value.headers["content-type"];
+      }
+      if (!contentType && (options.filepath || options.filename)) {
+        contentType = mime.lookup(options.filepath || options.filename);
+      }
+      if (!contentType && typeof value == "object") {
+        contentType = FormData4.DEFAULT_CONTENT_TYPE;
+      }
+      return contentType;
+    };
+    FormData4.prototype._multiPartFooter = function() {
+      return function(next) {
+        var footer = FormData4.LINE_BREAK;
+        var lastPart = this._streams.length === 0;
+        if (lastPart) {
+          footer += this._lastBoundary();
+        }
+        next(footer);
+      }.bind(this);
+    };
+    FormData4.prototype._lastBoundary = function() {
+      return "--" + this.getBoundary() + "--" + FormData4.LINE_BREAK;
+    };
+    FormData4.prototype.getHeaders = function(userHeaders) {
+      var header;
+      var formHeaders = {
+        "content-type": "multipart/form-data; boundary=" + this.getBoundary()
+      };
+      for (header in userHeaders) {
+        if (userHeaders.hasOwnProperty(header)) {
+          formHeaders[header.toLowerCase()] = userHeaders[header];
+        }
+      }
+      return formHeaders;
+    };
+    FormData4.prototype.setBoundary = function(boundary) {
+      this._boundary = boundary;
+    };
+    FormData4.prototype.getBoundary = function() {
+      if (!this._boundary) {
+        this._generateBoundary();
+      }
+      return this._boundary;
+    };
+    FormData4.prototype.getBuffer = function() {
+      var dataBuffer = new Buffer.alloc(0);
+      var boundary = this.getBoundary();
+      for (var i2 = 0, len = this._streams.length; i2 < len; i2++) {
+        if (typeof this._streams[i2] !== "function") {
+          if (Buffer.isBuffer(this._streams[i2])) {
+            dataBuffer = Buffer.concat([dataBuffer, this._streams[i2]]);
+          } else {
+            dataBuffer = Buffer.concat([dataBuffer, Buffer.from(this._streams[i2])]);
+          }
+          if (typeof this._streams[i2] !== "string" || this._streams[i2].substring(2, boundary.length + 2) !== boundary) {
+            dataBuffer = Buffer.concat([dataBuffer, Buffer.from(FormData4.LINE_BREAK)]);
+          }
+        }
+      }
+      return Buffer.concat([dataBuffer, Buffer.from(this._lastBoundary())]);
+    };
+    FormData4.prototype._generateBoundary = function() {
+      var boundary = "--------------------------";
+      for (var i2 = 0; i2 < 24; i2++) {
+        boundary += Math.floor(Math.random() * 10).toString(16);
+      }
+      this._boundary = boundary;
+    };
+    FormData4.prototype.getLengthSync = function() {
+      var knownLength = this._overheadLength + this._valueLength;
+      if (this._streams.length) {
+        knownLength += this._lastBoundary().length;
+      }
+      if (!this.hasKnownLength()) {
+        this._error(new Error("Cannot calculate proper length in synchronous way."));
+      }
+      return knownLength;
+    };
+    FormData4.prototype.hasKnownLength = function() {
+      var hasKnownLength = true;
+      if (this._valuesToMeasure.length) {
+        hasKnownLength = false;
+      }
+      return hasKnownLength;
+    };
+    FormData4.prototype.getLength = function(cb) {
+      var knownLength = this._overheadLength + this._valueLength;
+      if (this._streams.length) {
+        knownLength += this._lastBoundary().length;
+      }
+      if (!this._valuesToMeasure.length) {
+        process.nextTick(cb.bind(this, null, knownLength));
+        return;
+      }
+      asynckit.parallel(this._valuesToMeasure, this._lengthRetriever, function(err, values) {
+        if (err) {
+          cb(err);
+          return;
+        }
+        values.forEach(function(length) {
+          knownLength += length;
+        });
+        cb(null, knownLength);
       });
     };
+    FormData4.prototype.submit = function(params, cb) {
+      var request, options, defaults = { method: "post" };
+      if (typeof params == "string") {
+        params = parseUrl(params);
+        options = populate({
+          port: params.port,
+          path: params.pathname,
+          host: params.hostname,
+          protocol: params.protocol
+        }, defaults);
+      } else {
+        options = populate(params, defaults);
+        if (!options.port) {
+          options.port = options.protocol == "https:" ? 443 : 80;
+        }
+      }
+      options.headers = this.getHeaders(params.headers);
+      if (options.protocol == "https:") {
+        request = https2.request(options);
+      } else {
+        request = http3.request(options);
+      }
+      this.getLength(function(err, length) {
+        if (err && err !== "Unknown stream") {
+          this._error(err);
+          return;
+        }
+        if (length) {
+          request.setHeader("Content-Length", length);
+        }
+        this.pipe(request);
+        if (cb) {
+          var onResponse;
+          var callback = function(error, responce) {
+            request.removeListener("error", callback);
+            request.removeListener("response", onResponse);
+            return cb.call(this, error, responce);
+          };
+          onResponse = callback.bind(this, null);
+          request.on("error", callback);
+          request.on("response", onResponse);
+        }
+      }.bind(this));
+      return request;
+    };
+    FormData4.prototype._error = function(err) {
+      if (!this.error) {
+        this.error = err;
+        this.pause();
+        this.emit("error", err);
+      }
+    };
+    FormData4.prototype.toString = function() {
+      return "[object FormData]";
+    };
+  }
+});
+
+// node_modules/proxy-from-env/index.js
+var require_proxy_from_env = __commonJS({
+  "node_modules/proxy-from-env/index.js"(exports) {
+    "use strict";
+    var parseUrl = require("url").parse;
+    var DEFAULT_PORTS = {
+      ftp: 21,
+      gopher: 70,
+      http: 80,
+      https: 443,
+      ws: 80,
+      wss: 443
+    };
+    var stringEndsWith = String.prototype.endsWith || function(s2) {
+      return s2.length <= this.length && this.indexOf(s2, this.length - s2.length) !== -1;
+    };
+    function getProxyForUrl(url) {
+      var parsedUrl = typeof url === "string" ? parseUrl(url) : url || {};
+      var proto = parsedUrl.protocol;
+      var hostname = parsedUrl.host;
+      var port = parsedUrl.port;
+      if (typeof hostname !== "string" || !hostname || typeof proto !== "string") {
+        return "";
+      }
+      proto = proto.split(":", 1)[0];
+      hostname = hostname.replace(/:\d*$/, "");
+      port = parseInt(port) || DEFAULT_PORTS[proto] || 0;
+      if (!shouldProxy(hostname, port)) {
+        return "";
+      }
+      var proxy = getEnv("npm_config_" + proto + "_proxy") || getEnv(proto + "_proxy") || getEnv("npm_config_proxy") || getEnv("all_proxy");
+      if (proxy && proxy.indexOf("://") === -1) {
+        proxy = proto + "://" + proxy;
+      }
+      return proxy;
+    }
+    function shouldProxy(hostname, port) {
+      var NO_PROXY = (getEnv("npm_config_no_proxy") || getEnv("no_proxy")).toLowerCase();
+      if (!NO_PROXY) {
+        return true;
+      }
+      if (NO_PROXY === "*") {
+        return false;
+      }
+      return NO_PROXY.split(/[,\s]/).every(function(proxy) {
+        if (!proxy) {
+          return true;
+        }
+        var parsedProxy = proxy.match(/^(.+):(\d+)$/);
+        var parsedProxyHostname = parsedProxy ? parsedProxy[1] : proxy;
+        var parsedProxyPort = parsedProxy ? parseInt(parsedProxy[2]) : 0;
+        if (parsedProxyPort && parsedProxyPort !== port) {
+          return true;
+        }
+        if (!/^[.*]/.test(parsedProxyHostname)) {
+          return hostname !== parsedProxyHostname;
+        }
+        if (parsedProxyHostname.charAt(0) === "*") {
+          parsedProxyHostname = parsedProxyHostname.slice(1);
+        }
+        return !stringEndsWith.call(hostname, parsedProxyHostname);
+      });
+    }
+    function getEnv(key2) {
+      return process.env[key2.toLowerCase()] || process.env[key2.toUpperCase()] || "";
+    }
+    exports.getProxyForUrl = getProxyForUrl;
   }
 });
 
@@ -2159,15 +11910,15 @@ var require_ms = __commonJS({
     var d = h2 * 24;
     var w = d * 7;
     var y = d * 365.25;
-    module2.exports = function(val, options) {
+    module2.exports = function(val2, options) {
       options = options || {};
-      var type = typeof val;
-      if (type === "string" && val.length > 0) {
-        return parse4(val);
-      } else if (type === "number" && isFinite(val)) {
-        return options.long ? fmtLong(val) : fmtShort(val);
+      var type = typeof val2;
+      if (type === "string" && val2.length > 0) {
+        return parse4(val2);
+      } else if (type === "number" && isFinite(val2)) {
+        return options.long ? fmtLong(val2) : fmtShort(val2);
       }
-      throw new Error("val is not a non-empty string or a valid number. val=" + JSON.stringify(val));
+      throw new Error("val is not a non-empty string or a valid number. val=" + JSON.stringify(val2));
     };
     function parse4(str) {
       str = String(str);
@@ -2317,8 +12068,8 @@ var require_common = __commonJS({
             index++;
             const formatter = createDebug.formatters[format];
             if (typeof formatter === "function") {
-              const val = args[index];
-              match = formatter.call(self2, val);
+              const val2 = args[index];
+              match = formatter.call(self2, val2);
               args.splice(index, 1);
               index--;
             }
@@ -2409,11 +12160,11 @@ var require_common = __commonJS({
       function toNamespace(regexp) {
         return regexp.toString().substring(2, regexp.toString().length - 2).replace(/\.\*\?$/, "*");
       }
-      function coerce(val) {
-        if (val instanceof Error) {
-          return val.stack || val.message;
+      function coerce(val2) {
+        if (val2 instanceof Error) {
+          return val2.stack || val2.message;
         }
-        return val;
+        return val2;
       }
       function destroy() {
         console.warn("Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.");
@@ -2820,17 +12571,17 @@ var require_node = __commonJS({
       const prop2 = key2.substring(6).toLowerCase().replace(/_([a-z])/g, (_, k) => {
         return k.toUpperCase();
       });
-      let val = process.env[key2];
-      if (/^(yes|on|true|enabled)$/i.test(val)) {
-        val = true;
-      } else if (/^(no|off|false|disabled)$/i.test(val)) {
-        val = false;
-      } else if (val === "null") {
-        val = null;
+      let val2 = process.env[key2];
+      if (/^(yes|on|true|enabled)$/i.test(val2)) {
+        val2 = true;
+      } else if (/^(no|off|false|disabled)$/i.test(val2)) {
+        val2 = false;
+      } else if (val2 === "null") {
+        val2 = null;
       } else {
-        val = Number(val);
+        val2 = Number(val2);
       }
-      obj[prop2] = val;
+      obj[prop2] = val2;
       return obj;
     }, {});
     function useColors() {
@@ -2935,6 +12686,7 @@ var require_follow_redirects = __commonJS({
         this._redirectable.emit(event, arg1, arg2, arg3);
       };
     });
+    var InvalidUrlError = createErrorType("ERR_INVALID_URL", "Invalid URL", TypeError);
     var RedirectionError = createErrorType("ERR_FR_REDIRECTION_FAILURE", "Redirected request failed");
     var TooManyRedirectsError = createErrorType("ERR_FR_TOO_MANY_REDIRECTS", "Maximum number of redirects exceeded");
     var MaxBodyLengthExceededError = createErrorType("ERR_FR_MAX_BODY_LENGTH_EXCEEDED", "Request body larger than maxBodyLength limit");
@@ -2967,10 +12719,10 @@ var require_follow_redirects = __commonJS({
       if (this._ending) {
         throw new WriteAfterEndError();
       }
-      if (!(typeof data === "string" || typeof data === "object" && "length" in data)) {
+      if (!isString(data) && !isBuffer(data)) {
         throw new TypeError("data should be a string, Buffer or Uint8Array");
       }
-      if (typeof encoding === "function") {
+      if (isFunction(encoding)) {
         callback = encoding;
         encoding = null;
       }
@@ -2990,10 +12742,10 @@ var require_follow_redirects = __commonJS({
       }
     };
     RedirectableRequest.prototype.end = function(data, encoding, callback) {
-      if (typeof data === "function") {
+      if (isFunction(data)) {
         callback = data;
         data = encoding = null;
-      } else if (typeof encoding === "function") {
+      } else if (isFunction(encoding)) {
         callback = encoding;
         encoding = null;
       }
@@ -3109,15 +12861,15 @@ var require_follow_redirects = __commonJS({
         return;
       }
       if (this._options.agents) {
-        var scheme = protocol.substr(0, protocol.length - 1);
+        var scheme = protocol.slice(0, -1);
         this._options.agent = this._options.agents[scheme];
       }
       var request = this._currentRequest = nativeProtocol.request(this._options, this._onNativeResponse);
-      this._currentUrl = url.format(this._options);
       request._redirectable = this;
-      for (var e2 = 0; e2 < events.length; e2++) {
-        request.on(events[e2], eventHandlers[events[e2]]);
+      for (var event of events) {
+        request.on(event, eventHandlers[event]);
       }
+      this._currentUrl = /^\//.test(this._options.path) ? url.format(this._options) : this._options.path;
       if (this._isRedirect) {
         var i2 = 0;
         var self2 = this;
@@ -3161,6 +12913,14 @@ var require_follow_redirects = __commonJS({
         this.emit("error", new TooManyRedirectsError());
         return;
       }
+      var requestHeaders;
+      var beforeRedirect = this._options.beforeRedirect;
+      if (beforeRedirect) {
+        requestHeaders = Object.assign({
+          Host: response.req.getHeader("host")
+        }, this._options.headers);
+      }
+      var method = this._options.method;
       if ((statusCode === 301 || statusCode === 302) && this._options.method === "POST" || statusCode === 303 && !/^(?:GET|HEAD)$/.test(this._options.method)) {
         this._options.method = "GET";
         this._requestBodyBuffers = [];
@@ -3174,7 +12934,7 @@ var require_follow_redirects = __commonJS({
       try {
         redirectUrl = url.resolve(currentUrl, location);
       } catch (cause) {
-        this.emit("error", new RedirectionError(cause));
+        this.emit("error", new RedirectionError({ cause }));
         return;
       }
       debug("redirecting to", redirectUrl);
@@ -3184,10 +12944,18 @@ var require_follow_redirects = __commonJS({
       if (redirectUrlParts.protocol !== currentUrlParts.protocol && redirectUrlParts.protocol !== "https:" || redirectUrlParts.host !== currentHost && !isSubdomain(redirectUrlParts.host, currentHost)) {
         removeMatchingHeaders(/^(?:authorization|cookie)$/i, this._options.headers);
       }
-      if (typeof this._options.beforeRedirect === "function") {
-        var responseDetails = { headers: response.headers };
+      if (isFunction(beforeRedirect)) {
+        var responseDetails = {
+          headers: response.headers,
+          statusCode
+        };
+        var requestDetails = {
+          url: currentUrl,
+          method,
+          headers: requestHeaders
+        };
         try {
-          this._options.beforeRedirect.call(null, this._options, responseDetails);
+          beforeRedirect(this._options, responseDetails, requestDetails);
         } catch (err) {
           this.emit("error", err);
           return;
@@ -3197,7 +12965,7 @@ var require_follow_redirects = __commonJS({
       try {
         this._performRequest();
       } catch (cause) {
-        this.emit("error", new RedirectionError(cause));
+        this.emit("error", new RedirectionError({ cause }));
       }
     };
     function wrap(protocols) {
@@ -3211,13 +12979,17 @@ var require_follow_redirects = __commonJS({
         var nativeProtocol = nativeProtocols[protocol] = protocols[scheme];
         var wrappedProtocol = exports2[scheme] = Object.create(nativeProtocol);
         function request(input, options, callback) {
-          if (typeof input === "string") {
-            var urlStr = input;
+          if (isString(input)) {
+            var parsed;
             try {
-              input = urlToOptions(new URL2(urlStr));
+              parsed = urlToOptions(new URL2(input));
             } catch (err) {
-              input = url.parse(urlStr);
+              parsed = url.parse(input);
             }
+            if (!isString(parsed.protocol)) {
+              throw new InvalidUrlError({ input });
+            }
+            input = parsed;
           } else if (URL2 && input instanceof URL2) {
             input = urlToOptions(input);
           } else {
@@ -3225,7 +12997,7 @@ var require_follow_redirects = __commonJS({
             options = input;
             input = { protocol };
           }
-          if (typeof options === "function") {
+          if (isFunction(options)) {
             callback = options;
             options = null;
           }
@@ -3234,6 +13006,9 @@ var require_follow_redirects = __commonJS({
             maxBodyLength: exports2.maxBodyLength
           }, input, options);
           options.nativeProtocols = nativeProtocols;
+          if (!isString(options.host) && !isString(options.hostname)) {
+            options.hostname = "::1";
+          }
           assert.equal(options.protocol, protocol, "protocol mismatch");
           debug("options", options);
           return new RedirectableRequest(options, callback);
@@ -3277,397 +13052,756 @@ var require_follow_redirects = __commonJS({
       }
       return lastValue === null || typeof lastValue === "undefined" ? void 0 : String(lastValue).trim();
     }
-    function createErrorType(code, defaultMessage) {
-      function CustomError(cause) {
+    function createErrorType(code, message, baseClass) {
+      function CustomError(properties) {
         Error.captureStackTrace(this, this.constructor);
-        if (!cause) {
-          this.message = defaultMessage;
-        } else {
-          this.message = defaultMessage + ": " + cause.message;
-          this.cause = cause;
-        }
+        Object.assign(this, properties || {});
+        this.code = code;
+        this.message = this.cause ? message + ": " + this.cause.message : message;
       }
-      CustomError.prototype = new Error();
+      CustomError.prototype = new (baseClass || Error)();
       CustomError.prototype.constructor = CustomError;
       CustomError.prototype.name = "Error [" + code + "]";
-      CustomError.prototype.code = code;
       return CustomError;
     }
     function abortRequest(request) {
-      for (var e2 = 0; e2 < events.length; e2++) {
-        request.removeListener(events[e2], eventHandlers[events[e2]]);
+      for (var event of events) {
+        request.removeListener(event, eventHandlers[event]);
       }
       request.on("error", noop2);
       request.abort();
     }
     function isSubdomain(subdomain, domain) {
-      const dot = subdomain.length - domain.length - 1;
+      assert(isString(subdomain) && isString(domain));
+      var dot = subdomain.length - domain.length - 1;
       return dot > 0 && subdomain[dot] === "." && subdomain.endsWith(domain);
+    }
+    function isString(value) {
+      return typeof value === "string" || value instanceof String;
+    }
+    function isFunction(value) {
+      return typeof value === "function";
+    }
+    function isBuffer(value) {
+      return typeof value === "object" && "length" in value;
     }
     module2.exports = wrap({ http: http3, https: https2 });
     module2.exports.wrap = wrap;
   }
 });
 
-// node_modules/axios/package.json
-var require_package = __commonJS({
-  "node_modules/axios/package.json"(exports, module2) {
-    module2.exports = {
-      name: "axios",
-      version: "0.21.4",
-      description: "Promise based HTTP client for the browser and node.js",
-      main: "index.js",
-      scripts: {
-        test: "grunt test",
-        start: "node ./sandbox/server.js",
-        build: "NODE_ENV=production grunt build",
-        preversion: "npm test",
-        version: "npm run build && grunt version && git add -A dist && git add CHANGELOG.md bower.json package.json",
-        postversion: "git push && git push --tags",
-        examples: "node ./examples/server.js",
-        coveralls: "cat coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
-        fix: "eslint --fix lib/**/*.js"
-      },
-      repository: {
-        type: "git",
-        url: "https://github.com/axios/axios.git"
-      },
-      keywords: [
-        "xhr",
-        "http",
-        "ajax",
-        "promise",
-        "node"
-      ],
-      author: "Matt Zabriskie",
-      license: "MIT",
-      bugs: {
-        url: "https://github.com/axios/axios/issues"
-      },
-      homepage: "https://axios-http.com",
-      devDependencies: {
-        coveralls: "^3.0.0",
-        "es6-promise": "^4.2.4",
-        grunt: "^1.3.0",
-        "grunt-banner": "^0.6.0",
-        "grunt-cli": "^1.2.0",
-        "grunt-contrib-clean": "^1.1.0",
-        "grunt-contrib-watch": "^1.0.0",
-        "grunt-eslint": "^23.0.0",
-        "grunt-karma": "^4.0.0",
-        "grunt-mocha-test": "^0.13.3",
-        "grunt-ts": "^6.0.0-beta.19",
-        "grunt-webpack": "^4.0.2",
-        "istanbul-instrumenter-loader": "^1.0.0",
-        "jasmine-core": "^2.4.1",
-        karma: "^6.3.2",
-        "karma-chrome-launcher": "^3.1.0",
-        "karma-firefox-launcher": "^2.1.0",
-        "karma-jasmine": "^1.1.1",
-        "karma-jasmine-ajax": "^0.1.13",
-        "karma-safari-launcher": "^1.0.0",
-        "karma-sauce-launcher": "^4.3.6",
-        "karma-sinon": "^1.0.5",
-        "karma-sourcemap-loader": "^0.3.8",
-        "karma-webpack": "^4.0.2",
-        "load-grunt-tasks": "^3.5.2",
-        minimist: "^1.2.0",
-        mocha: "^8.2.1",
-        sinon: "^4.5.0",
-        "terser-webpack-plugin": "^4.2.3",
-        typescript: "^4.0.5",
-        "url-search-params": "^0.10.0",
-        webpack: "^4.44.2",
-        "webpack-dev-server": "^3.11.0"
-      },
-      browser: {
-        "./lib/adapters/http.js": "./lib/adapters/xhr.js"
-      },
-      jsdelivr: "dist/axios.min.js",
-      unpkg: "dist/axios.min.js",
-      typings: "./index.d.ts",
-      dependencies: {
-        "follow-redirects": "^1.14.0"
-      },
-      bundlesize: [
-        {
-          path: "./dist/axios.min.js",
-          threshold: "5kB"
-        }
-      ]
-    };
-  }
-});
-
-// node_modules/axios/lib/adapters/http.js
-var require_http = __commonJS({
-  "node_modules/axios/lib/adapters/http.js"(exports, module2) {
+// node_modules/axios/dist/node/axios.cjs
+var require_axios = __commonJS({
+  "node_modules/axios/dist/node/axios.cjs"(exports, module2) {
     "use strict";
-    var utils = require_utils2();
-    var settle = require_settle();
-    var buildFullPath = require_buildFullPath();
-    var buildURL = require_buildURL();
+    var FormData$1 = require_form_data();
+    var url = require("url");
+    var proxyFromEnv = require_proxy_from_env();
     var http3 = require("http");
     var https2 = require("https");
-    var httpFollow = require_follow_redirects().http;
-    var httpsFollow = require_follow_redirects().https;
-    var url = require("url");
+    var util = require("util");
+    var followRedirects = require_follow_redirects();
     var zlib2 = require("zlib");
-    var pkg = require_package();
-    var createError = require_createError();
-    var enhanceError = require_enhanceError();
-    var isHttps = /https:?/;
-    function setProxy(options, proxy, location) {
-      options.hostname = proxy.host;
-      options.host = proxy.host;
-      options.port = proxy.port;
-      options.path = location;
-      if (proxy.auth) {
-        var base64 = Buffer.from(proxy.auth.username + ":" + proxy.auth.password, "utf8").toString("base64");
-        options.headers["Proxy-Authorization"] = "Basic " + base64;
-      }
-      options.beforeRedirect = function beforeRedirect(redirection) {
-        redirection.headers.host = redirection.host;
-        setProxy(redirection, proxy, redirection.href);
+    var stream = require("stream");
+    var EventEmitter = require("events");
+    function _interopDefaultLegacy(e2) {
+      return e2 && typeof e2 === "object" && "default" in e2 ? e2 : { "default": e2 };
+    }
+    var FormData__default = /* @__PURE__ */ _interopDefaultLegacy(FormData$1);
+    var url__default = /* @__PURE__ */ _interopDefaultLegacy(url);
+    var http__default = /* @__PURE__ */ _interopDefaultLegacy(http3);
+    var https__default = /* @__PURE__ */ _interopDefaultLegacy(https2);
+    var util__default = /* @__PURE__ */ _interopDefaultLegacy(util);
+    var followRedirects__default = /* @__PURE__ */ _interopDefaultLegacy(followRedirects);
+    var zlib__default = /* @__PURE__ */ _interopDefaultLegacy(zlib2);
+    var stream__default = /* @__PURE__ */ _interopDefaultLegacy(stream);
+    var EventEmitter__default = /* @__PURE__ */ _interopDefaultLegacy(EventEmitter);
+    function bind(fn, thisArg) {
+      return function wrap() {
+        return fn.apply(thisArg, arguments);
       };
     }
-    module2.exports = function httpAdapter(config) {
-      return new Promise(function dispatchHttpRequest(resolvePromise, rejectPromise) {
-        var resolve = function resolve2(value) {
-          resolvePromise(value);
-        };
-        var reject = function reject2(value) {
-          rejectPromise(value);
-        };
-        var data = config.data;
-        var headers = config.headers;
-        if ("User-Agent" in headers || "user-agent" in headers) {
-          if (!headers["User-Agent"] && !headers["user-agent"]) {
-            delete headers["User-Agent"];
-            delete headers["user-agent"];
-          }
+    var { toString: toString2 } = Object.prototype;
+    var { getPrototypeOf } = Object;
+    var kindOf = ((cache) => (thing) => {
+      const str = toString2.call(thing);
+      return cache[str] || (cache[str] = str.slice(8, -1).toLowerCase());
+    })(/* @__PURE__ */ Object.create(null));
+    var kindOfTest = (type) => {
+      type = type.toLowerCase();
+      return (thing) => kindOf(thing) === type;
+    };
+    var typeOfTest = (type) => (thing) => typeof thing === type;
+    var { isArray: isArray2 } = Array;
+    var isUndefined = typeOfTest("undefined");
+    function isBuffer(val2) {
+      return val2 !== null && !isUndefined(val2) && val2.constructor !== null && !isUndefined(val2.constructor) && isFunction(val2.constructor.isBuffer) && val2.constructor.isBuffer(val2);
+    }
+    var isArrayBuffer = kindOfTest("ArrayBuffer");
+    function isArrayBufferView(val2) {
+      let result;
+      if (typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView) {
+        result = ArrayBuffer.isView(val2);
+      } else {
+        result = val2 && val2.buffer && isArrayBuffer(val2.buffer);
+      }
+      return result;
+    }
+    var isString = typeOfTest("string");
+    var isFunction = typeOfTest("function");
+    var isNumber = typeOfTest("number");
+    var isObject = (thing) => thing !== null && typeof thing === "object";
+    var isBoolean = (thing) => thing === true || thing === false;
+    var isPlainObject = (val2) => {
+      if (kindOf(val2) !== "object") {
+        return false;
+      }
+      const prototype3 = getPrototypeOf(val2);
+      return (prototype3 === null || prototype3 === Object.prototype || Object.getPrototypeOf(prototype3) === null) && !(Symbol.toStringTag in val2) && !(Symbol.iterator in val2);
+    };
+    var isDate = kindOfTest("Date");
+    var isFile = kindOfTest("File");
+    var isBlob2 = kindOfTest("Blob");
+    var isFileList = kindOfTest("FileList");
+    var isStream = (val2) => isObject(val2) && isFunction(val2.pipe);
+    var isFormData = (thing) => {
+      let kind;
+      return thing && (typeof FormData === "function" && thing instanceof FormData || isFunction(thing.append) && ((kind = kindOf(thing)) === "formdata" || kind === "object" && isFunction(thing.toString) && thing.toString() === "[object FormData]"));
+    };
+    var isURLSearchParams = kindOfTest("URLSearchParams");
+    var trim = (str) => str.trim ? str.trim() : str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, "");
+    function forEach(obj, fn, { allOwnKeys = false } = {}) {
+      if (obj === null || typeof obj === "undefined") {
+        return;
+      }
+      let i2;
+      let l;
+      if (typeof obj !== "object") {
+        obj = [obj];
+      }
+      if (isArray2(obj)) {
+        for (i2 = 0, l = obj.length; i2 < l; i2++) {
+          fn.call(null, obj[i2], i2, obj);
+        }
+      } else {
+        const keys2 = allOwnKeys ? Object.getOwnPropertyNames(obj) : Object.keys(obj);
+        const len = keys2.length;
+        let key2;
+        for (i2 = 0; i2 < len; i2++) {
+          key2 = keys2[i2];
+          fn.call(null, obj[key2], key2, obj);
+        }
+      }
+    }
+    function findKey(obj, key2) {
+      key2 = key2.toLowerCase();
+      const keys2 = Object.keys(obj);
+      let i2 = keys2.length;
+      let _key;
+      while (i2-- > 0) {
+        _key = keys2[i2];
+        if (key2 === _key.toLowerCase()) {
+          return _key;
+        }
+      }
+      return null;
+    }
+    var _global = (() => {
+      if (typeof globalThis !== "undefined")
+        return globalThis;
+      return typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : global;
+    })();
+    var isContextDefined = (context) => !isUndefined(context) && context !== _global;
+    function merge() {
+      const { caseless } = isContextDefined(this) && this || {};
+      const result = {};
+      const assignValue = (val2, key2) => {
+        const targetKey = caseless && findKey(result, key2) || key2;
+        if (isPlainObject(result[targetKey]) && isPlainObject(val2)) {
+          result[targetKey] = merge(result[targetKey], val2);
+        } else if (isPlainObject(val2)) {
+          result[targetKey] = merge({}, val2);
+        } else if (isArray2(val2)) {
+          result[targetKey] = val2.slice();
         } else {
-          headers["User-Agent"] = "axios/" + pkg.version;
+          result[targetKey] = val2;
         }
-        if (data && !utils.isStream(data)) {
-          if (Buffer.isBuffer(data)) {
-          } else if (utils.isArrayBuffer(data)) {
-            data = Buffer.from(new Uint8Array(data));
-          } else if (utils.isString(data)) {
-            data = Buffer.from(data, "utf-8");
-          } else {
-            return reject(createError("Data after transformation must be a string, an ArrayBuffer, a Buffer, or a Stream", config));
-          }
-          headers["Content-Length"] = data.length;
-        }
-        var auth = void 0;
-        if (config.auth) {
-          var username = config.auth.username || "";
-          var password = config.auth.password || "";
-          auth = username + ":" + password;
-        }
-        var fullPath = buildFullPath(config.baseURL, config.url);
-        var parsed = url.parse(fullPath);
-        var protocol = parsed.protocol || "http:";
-        if (!auth && parsed.auth) {
-          var urlAuth = parsed.auth.split(":");
-          var urlUsername = urlAuth[0] || "";
-          var urlPassword = urlAuth[1] || "";
-          auth = urlUsername + ":" + urlPassword;
-        }
-        if (auth) {
-          delete headers.Authorization;
-        }
-        var isHttpsRequest = isHttps.test(protocol);
-        var agent = isHttpsRequest ? config.httpsAgent : config.httpAgent;
-        var options = {
-          path: buildURL(parsed.path, config.params, config.paramsSerializer).replace(/^\?/, ""),
-          method: config.method.toUpperCase(),
-          headers,
-          agent,
-          agents: { http: config.httpAgent, https: config.httpsAgent },
-          auth
-        };
-        if (config.socketPath) {
-          options.socketPath = config.socketPath;
+      };
+      for (let i2 = 0, l = arguments.length; i2 < l; i2++) {
+        arguments[i2] && forEach(arguments[i2], assignValue);
+      }
+      return result;
+    }
+    var extend = (a, b, thisArg, { allOwnKeys } = {}) => {
+      forEach(b, (val2, key2) => {
+        if (thisArg && isFunction(val2)) {
+          a[key2] = bind(val2, thisArg);
         } else {
-          options.hostname = parsed.hostname;
-          options.port = parsed.port;
+          a[key2] = val2;
         }
-        var proxy = config.proxy;
-        if (!proxy && proxy !== false) {
-          var proxyEnv = protocol.slice(0, -1) + "_proxy";
-          var proxyUrl = process.env[proxyEnv] || process.env[proxyEnv.toUpperCase()];
-          if (proxyUrl) {
-            var parsedProxyUrl = url.parse(proxyUrl);
-            var noProxyEnv = process.env.no_proxy || process.env.NO_PROXY;
-            var shouldProxy = true;
-            if (noProxyEnv) {
-              var noProxy = noProxyEnv.split(",").map(function trim(s2) {
-                return s2.trim();
-              });
-              shouldProxy = !noProxy.some(function proxyMatch(proxyElement) {
-                if (!proxyElement) {
-                  return false;
-                }
-                if (proxyElement === "*") {
-                  return true;
-                }
-                if (proxyElement[0] === "." && parsed.hostname.substr(parsed.hostname.length - proxyElement.length) === proxyElement) {
-                  return true;
-                }
-                return parsed.hostname === proxyElement;
-              });
-            }
-            if (shouldProxy) {
-              proxy = {
-                host: parsedProxyUrl.hostname,
-                port: parsedProxyUrl.port,
-                protocol: parsedProxyUrl.protocol
-              };
-              if (parsedProxyUrl.auth) {
-                var proxyUrlAuth = parsedProxyUrl.auth.split(":");
-                proxy.auth = {
-                  username: proxyUrlAuth[0],
-                  password: proxyUrlAuth[1]
-                };
-              }
-            }
+      }, { allOwnKeys });
+      return a;
+    };
+    var stripBOM = (content) => {
+      if (content.charCodeAt(0) === 65279) {
+        content = content.slice(1);
+      }
+      return content;
+    };
+    var inherits = (constructor, superConstructor, props, descriptors2) => {
+      constructor.prototype = Object.create(superConstructor.prototype, descriptors2);
+      constructor.prototype.constructor = constructor;
+      Object.defineProperty(constructor, "super", {
+        value: superConstructor.prototype
+      });
+      props && Object.assign(constructor.prototype, props);
+    };
+    var toFlatObject = (sourceObj, destObj, filter, propFilter) => {
+      let props;
+      let i2;
+      let prop2;
+      const merged = {};
+      destObj = destObj || {};
+      if (sourceObj == null)
+        return destObj;
+      do {
+        props = Object.getOwnPropertyNames(sourceObj);
+        i2 = props.length;
+        while (i2-- > 0) {
+          prop2 = props[i2];
+          if ((!propFilter || propFilter(prop2, sourceObj, destObj)) && !merged[prop2]) {
+            destObj[prop2] = sourceObj[prop2];
+            merged[prop2] = true;
           }
         }
-        if (proxy) {
-          options.headers.host = parsed.hostname + (parsed.port ? ":" + parsed.port : "");
-          setProxy(options, proxy, protocol + "//" + parsed.hostname + (parsed.port ? ":" + parsed.port : "") + options.path);
+        sourceObj = filter !== false && getPrototypeOf(sourceObj);
+      } while (sourceObj && (!filter || filter(sourceObj, destObj)) && sourceObj !== Object.prototype);
+      return destObj;
+    };
+    var endsWith = (str, searchString, position) => {
+      str = String(str);
+      if (position === void 0 || position > str.length) {
+        position = str.length;
+      }
+      position -= searchString.length;
+      const lastIndex = str.indexOf(searchString, position);
+      return lastIndex !== -1 && lastIndex === position;
+    };
+    var toArray = (thing) => {
+      if (!thing)
+        return null;
+      if (isArray2(thing))
+        return thing;
+      let i2 = thing.length;
+      if (!isNumber(i2))
+        return null;
+      const arr = new Array(i2);
+      while (i2-- > 0) {
+        arr[i2] = thing[i2];
+      }
+      return arr;
+    };
+    var isTypedArray = ((TypedArray) => {
+      return (thing) => {
+        return TypedArray && thing instanceof TypedArray;
+      };
+    })(typeof Uint8Array !== "undefined" && getPrototypeOf(Uint8Array));
+    var forEachEntry = (obj, fn) => {
+      const generator = obj && obj[Symbol.iterator];
+      const iterator = generator.call(obj);
+      let result;
+      while ((result = iterator.next()) && !result.done) {
+        const pair = result.value;
+        fn.call(obj, pair[0], pair[1]);
+      }
+    };
+    var matchAll = (regExp, str) => {
+      let matches2;
+      const arr = [];
+      while ((matches2 = regExp.exec(str)) !== null) {
+        arr.push(matches2);
+      }
+      return arr;
+    };
+    var isHTMLForm = kindOfTest("HTMLFormElement");
+    var toCamelCase = (str) => {
+      return str.toLowerCase().replace(/[-_\s]([a-z\d])(\w*)/g, function replacer(m2, p1, p2) {
+        return p1.toUpperCase() + p2;
+      });
+    };
+    var hasOwnProperty = (({ hasOwnProperty: hasOwnProperty2 }) => (obj, prop2) => hasOwnProperty2.call(obj, prop2))(Object.prototype);
+    var isRegExp = kindOfTest("RegExp");
+    var reduceDescriptors = (obj, reducer) => {
+      const descriptors2 = Object.getOwnPropertyDescriptors(obj);
+      const reducedDescriptors = {};
+      forEach(descriptors2, (descriptor, name) => {
+        if (reducer(descriptor, name, obj) !== false) {
+          reducedDescriptors[name] = descriptor;
         }
-        var transport;
-        var isHttpsProxy = isHttpsRequest && (proxy ? isHttps.test(proxy.protocol) : true);
-        if (config.transport) {
-          transport = config.transport;
-        } else if (config.maxRedirects === 0) {
-          transport = isHttpsProxy ? https2 : http3;
-        } else {
-          if (config.maxRedirects) {
-            options.maxRedirects = config.maxRedirects;
-          }
-          transport = isHttpsProxy ? httpsFollow : httpFollow;
+      });
+      Object.defineProperties(obj, reducedDescriptors);
+    };
+    var freezeMethods = (obj) => {
+      reduceDescriptors(obj, (descriptor, name) => {
+        if (isFunction(obj) && ["arguments", "caller", "callee"].indexOf(name) !== -1) {
+          return false;
         }
-        if (config.maxBodyLength > -1) {
-          options.maxBodyLength = config.maxBodyLength;
+        const value = obj[name];
+        if (!isFunction(value))
+          return;
+        descriptor.enumerable = false;
+        if ("writable" in descriptor) {
+          descriptor.writable = false;
+          return;
         }
-        var req = transport.request(options, function handleResponse(res) {
-          if (req.aborted)
-            return;
-          var stream = res;
-          var lastRequest = res.req || req;
-          if (res.statusCode !== 204 && lastRequest.method !== "HEAD" && config.decompress !== false) {
-            switch (res.headers["content-encoding"]) {
-              case "gzip":
-              case "compress":
-              case "deflate":
-                stream = stream.pipe(zlib2.createUnzip());
-                delete res.headers["content-encoding"];
-                break;
-            }
-          }
-          var response = {
-            status: res.statusCode,
-            statusText: res.statusMessage,
-            headers: res.headers,
-            config,
-            request: lastRequest
+        if (!descriptor.set) {
+          descriptor.set = () => {
+            throw Error("Can not rewrite read-only method '" + name + "'");
           };
-          if (config.responseType === "stream") {
-            response.data = stream;
-            settle(resolve, reject, response);
-          } else {
-            var responseBuffer = [];
-            var totalResponseBytes = 0;
-            stream.on("data", function handleStreamData(chunk) {
-              responseBuffer.push(chunk);
-              totalResponseBytes += chunk.length;
-              if (config.maxContentLength > -1 && totalResponseBytes > config.maxContentLength) {
-                stream.destroy();
-                reject(createError("maxContentLength size of " + config.maxContentLength + " exceeded", config, null, lastRequest));
-              }
-            });
-            stream.on("error", function handleStreamError(err) {
-              if (req.aborted)
-                return;
-              reject(enhanceError(err, config, null, lastRequest));
-            });
-            stream.on("end", function handleStreamEnd() {
-              var responseData = Buffer.concat(responseBuffer);
-              if (config.responseType !== "arraybuffer") {
-                responseData = responseData.toString(config.responseEncoding);
-                if (!config.responseEncoding || config.responseEncoding === "utf8") {
-                  responseData = utils.stripBOM(responseData);
-                }
-              }
-              response.data = responseData;
-              settle(resolve, reject, response);
-            });
-          }
-        });
-        req.on("error", function handleRequestError(err) {
-          if (req.aborted && err.code !== "ERR_FR_TOO_MANY_REDIRECTS")
-            return;
-          reject(enhanceError(err, config, null, req));
-        });
-        if (config.timeout) {
-          var timeout = parseInt(config.timeout, 10);
-          if (isNaN(timeout)) {
-            reject(createError("error trying to parse `config.timeout` to int", config, "ERR_PARSE_TIMEOUT", req));
-            return;
-          }
-          req.setTimeout(timeout, function handleRequestTimeout() {
-            req.abort();
-            reject(createError("timeout of " + timeout + "ms exceeded", config, config.transitional && config.transitional.clarifyTimeoutError ? "ETIMEDOUT" : "ECONNABORTED", req));
-          });
-        }
-        if (config.cancelToken) {
-          config.cancelToken.promise.then(function onCanceled(cancel) {
-            if (req.aborted)
-              return;
-            req.abort();
-            reject(cancel);
-          });
-        }
-        if (utils.isStream(data)) {
-          data.on("error", function handleStreamError(err) {
-            reject(enhanceError(err, config, null, req));
-          }).pipe(req);
-        } else {
-          req.end(data);
         }
       });
     };
-  }
-});
-
-// node_modules/axios/lib/defaults.js
-var require_defaults = __commonJS({
-  "node_modules/axios/lib/defaults.js"(exports, module2) {
-    "use strict";
-    var utils = require_utils2();
-    var normalizeHeaderName = require_normalizeHeaderName();
-    var enhanceError = require_enhanceError();
-    var DEFAULT_CONTENT_TYPE = {
-      "Content-Type": "application/x-www-form-urlencoded"
+    var toObjectSet = (arrayOrString, delimiter) => {
+      const obj = {};
+      const define2 = (arr) => {
+        arr.forEach((value) => {
+          obj[value] = true;
+        });
+      };
+      isArray2(arrayOrString) ? define2(arrayOrString) : define2(String(arrayOrString).split(delimiter));
+      return obj;
     };
-    function setContentTypeIfUnset(headers, value) {
-      if (!utils.isUndefined(headers) && utils.isUndefined(headers["Content-Type"])) {
-        headers["Content-Type"] = value;
+    var noop2 = () => {
+    };
+    var toFiniteNumber = (value, defaultValue) => {
+      value = +value;
+      return Number.isFinite(value) ? value : defaultValue;
+    };
+    var ALPHA = "abcdefghijklmnopqrstuvwxyz";
+    var DIGIT = "0123456789";
+    var ALPHABET = {
+      DIGIT,
+      ALPHA,
+      ALPHA_DIGIT: ALPHA + ALPHA.toUpperCase() + DIGIT
+    };
+    var generateString = (size = 16, alphabet = ALPHABET.ALPHA_DIGIT) => {
+      let str = "";
+      const { length } = alphabet;
+      while (size--) {
+        str += alphabet[Math.random() * length | 0];
       }
+      return str;
+    };
+    function isSpecCompliantForm(thing) {
+      return !!(thing && isFunction(thing.append) && thing[Symbol.toStringTag] === "FormData" && thing[Symbol.iterator]);
     }
-    function getDefaultAdapter() {
-      var adapter2;
-      if (typeof XMLHttpRequest !== "undefined") {
-        adapter2 = require_xhr();
-      } else if (typeof process !== "undefined" && Object.prototype.toString.call(process) === "[object process]") {
-        adapter2 = require_http();
+    var toJSONObject = (obj) => {
+      const stack = new Array(10);
+      const visit = (source, i2) => {
+        if (isObject(source)) {
+          if (stack.indexOf(source) >= 0) {
+            return;
+          }
+          if (!("toJSON" in source)) {
+            stack[i2] = source;
+            const target = isArray2(source) ? [] : {};
+            forEach(source, (value, key2) => {
+              const reducedValue = visit(value, i2 + 1);
+              !isUndefined(reducedValue) && (target[key2] = reducedValue);
+            });
+            stack[i2] = void 0;
+            return target;
+          }
+        }
+        return source;
+      };
+      return visit(obj, 0);
+    };
+    var isAsyncFn = kindOfTest("AsyncFunction");
+    var isThenable = (thing) => thing && (isObject(thing) || isFunction(thing)) && isFunction(thing.then) && isFunction(thing.catch);
+    var utils = {
+      isArray: isArray2,
+      isArrayBuffer,
+      isBuffer,
+      isFormData,
+      isArrayBufferView,
+      isString,
+      isNumber,
+      isBoolean,
+      isObject,
+      isPlainObject,
+      isUndefined,
+      isDate,
+      isFile,
+      isBlob: isBlob2,
+      isRegExp,
+      isFunction,
+      isStream,
+      isURLSearchParams,
+      isTypedArray,
+      isFileList,
+      forEach,
+      merge,
+      extend,
+      trim,
+      stripBOM,
+      inherits,
+      toFlatObject,
+      kindOf,
+      kindOfTest,
+      endsWith,
+      toArray,
+      forEachEntry,
+      matchAll,
+      isHTMLForm,
+      hasOwnProperty,
+      hasOwnProp: hasOwnProperty,
+      reduceDescriptors,
+      freezeMethods,
+      toObjectSet,
+      toCamelCase,
+      noop: noop2,
+      toFiniteNumber,
+      findKey,
+      global: _global,
+      isContextDefined,
+      ALPHABET,
+      generateString,
+      isSpecCompliantForm,
+      toJSONObject,
+      isAsyncFn,
+      isThenable
+    };
+    function AxiosError(message, code, config, request, response) {
+      Error.call(this);
+      if (Error.captureStackTrace) {
+        Error.captureStackTrace(this, this.constructor);
+      } else {
+        this.stack = new Error().stack;
       }
-      return adapter2;
+      this.message = message;
+      this.name = "AxiosError";
+      code && (this.code = code);
+      config && (this.config = config);
+      request && (this.request = request);
+      response && (this.response = response);
     }
+    utils.inherits(AxiosError, Error, {
+      toJSON: function toJSON2() {
+        return {
+          message: this.message,
+          name: this.name,
+          description: this.description,
+          number: this.number,
+          fileName: this.fileName,
+          lineNumber: this.lineNumber,
+          columnNumber: this.columnNumber,
+          stack: this.stack,
+          config: utils.toJSONObject(this.config),
+          code: this.code,
+          status: this.response && this.response.status ? this.response.status : null
+        };
+      }
+    });
+    var prototype$1 = AxiosError.prototype;
+    var descriptors = {};
+    [
+      "ERR_BAD_OPTION_VALUE",
+      "ERR_BAD_OPTION",
+      "ECONNABORTED",
+      "ETIMEDOUT",
+      "ERR_NETWORK",
+      "ERR_FR_TOO_MANY_REDIRECTS",
+      "ERR_DEPRECATED",
+      "ERR_BAD_RESPONSE",
+      "ERR_BAD_REQUEST",
+      "ERR_CANCELED",
+      "ERR_NOT_SUPPORT",
+      "ERR_INVALID_URL"
+    ].forEach((code) => {
+      descriptors[code] = { value: code };
+    });
+    Object.defineProperties(AxiosError, descriptors);
+    Object.defineProperty(prototype$1, "isAxiosError", { value: true });
+    AxiosError.from = (error, code, config, request, response, customProps) => {
+      const axiosError = Object.create(prototype$1);
+      utils.toFlatObject(error, axiosError, function filter(obj) {
+        return obj !== Error.prototype;
+      }, (prop2) => {
+        return prop2 !== "isAxiosError";
+      });
+      AxiosError.call(axiosError, error.message, code, config, request, response);
+      axiosError.cause = error;
+      axiosError.name = error.name;
+      customProps && Object.assign(axiosError, customProps);
+      return axiosError;
+    };
+    function isVisitable(thing) {
+      return utils.isPlainObject(thing) || utils.isArray(thing);
+    }
+    function removeBrackets(key2) {
+      return utils.endsWith(key2, "[]") ? key2.slice(0, -2) : key2;
+    }
+    function renderKey(path, key2, dots) {
+      if (!path)
+        return key2;
+      return path.concat(key2).map(function each(token, i2) {
+        token = removeBrackets(token);
+        return !dots && i2 ? "[" + token + "]" : token;
+      }).join(dots ? "." : "");
+    }
+    function isFlatArray(arr) {
+      return utils.isArray(arr) && !arr.some(isVisitable);
+    }
+    var predicates = utils.toFlatObject(utils, {}, null, function filter(prop2) {
+      return /^is[A-Z]/.test(prop2);
+    });
+    function toFormData2(obj, formData, options) {
+      if (!utils.isObject(obj)) {
+        throw new TypeError("target must be an object");
+      }
+      formData = formData || new (FormData__default["default"] || FormData)();
+      options = utils.toFlatObject(options, {
+        metaTokens: true,
+        dots: false,
+        indexes: false
+      }, false, function defined(option, source) {
+        return !utils.isUndefined(source[option]);
+      });
+      const metaTokens = options.metaTokens;
+      const visitor = options.visitor || defaultVisitor;
+      const dots = options.dots;
+      const indexes = options.indexes;
+      const _Blob2 = options.Blob || typeof Blob !== "undefined" && Blob;
+      const useBlob = _Blob2 && utils.isSpecCompliantForm(formData);
+      if (!utils.isFunction(visitor)) {
+        throw new TypeError("visitor must be a function");
+      }
+      function convertValue(value) {
+        if (value === null)
+          return "";
+        if (utils.isDate(value)) {
+          return value.toISOString();
+        }
+        if (!useBlob && utils.isBlob(value)) {
+          throw new AxiosError("Blob is not supported. Use a Buffer instead.");
+        }
+        if (utils.isArrayBuffer(value) || utils.isTypedArray(value)) {
+          return useBlob && typeof Blob === "function" ? new Blob([value]) : Buffer.from(value);
+        }
+        return value;
+      }
+      function defaultVisitor(value, key2, path) {
+        let arr = value;
+        if (value && !path && typeof value === "object") {
+          if (utils.endsWith(key2, "{}")) {
+            key2 = metaTokens ? key2 : key2.slice(0, -2);
+            value = JSON.stringify(value);
+          } else if (utils.isArray(value) && isFlatArray(value) || (utils.isFileList(value) || utils.endsWith(key2, "[]")) && (arr = utils.toArray(value))) {
+            key2 = removeBrackets(key2);
+            arr.forEach(function each(el, index) {
+              !(utils.isUndefined(el) || el === null) && formData.append(indexes === true ? renderKey([key2], index, dots) : indexes === null ? key2 : key2 + "[]", convertValue(el));
+            });
+            return false;
+          }
+        }
+        if (isVisitable(value)) {
+          return true;
+        }
+        formData.append(renderKey(path, key2, dots), convertValue(value));
+        return false;
+      }
+      const stack = [];
+      const exposedHelpers = Object.assign(predicates, {
+        defaultVisitor,
+        convertValue,
+        isVisitable
+      });
+      function build(value, path) {
+        if (utils.isUndefined(value))
+          return;
+        if (stack.indexOf(value) !== -1) {
+          throw Error("Circular reference detected in " + path.join("."));
+        }
+        stack.push(value);
+        utils.forEach(value, function each(el, key2) {
+          const result = !(utils.isUndefined(el) || el === null) && visitor.call(formData, el, utils.isString(key2) ? key2.trim() : key2, path, exposedHelpers);
+          if (result === true) {
+            build(el, path ? path.concat(key2) : [key2]);
+          }
+        });
+        stack.pop();
+      }
+      if (!utils.isObject(obj)) {
+        throw new TypeError("data must be an object");
+      }
+      build(obj);
+      return formData;
+    }
+    function encode$1(str) {
+      const charMap = {
+        "!": "%21",
+        "'": "%27",
+        "(": "%28",
+        ")": "%29",
+        "~": "%7E",
+        "%20": "+",
+        "%00": "\0"
+      };
+      return encodeURIComponent(str).replace(/[!'()~]|%20|%00/g, function replacer(match) {
+        return charMap[match];
+      });
+    }
+    function AxiosURLSearchParams(params, options) {
+      this._pairs = [];
+      params && toFormData2(params, this, options);
+    }
+    var prototype2 = AxiosURLSearchParams.prototype;
+    prototype2.append = function append2(name, value) {
+      this._pairs.push([name, value]);
+    };
+    prototype2.toString = function toString3(encoder) {
+      const _encode = encoder ? function(value) {
+        return encoder.call(this, value, encode$1);
+      } : encode$1;
+      return this._pairs.map(function each(pair) {
+        return _encode(pair[0]) + "=" + _encode(pair[1]);
+      }, "").join("&");
+    };
+    function encode(val2) {
+      return encodeURIComponent(val2).replace(/%3A/gi, ":").replace(/%24/g, "$").replace(/%2C/gi, ",").replace(/%20/g, "+").replace(/%5B/gi, "[").replace(/%5D/gi, "]");
+    }
+    function buildURL(url2, params, options) {
+      if (!params) {
+        return url2;
+      }
+      const _encode = options && options.encode || encode;
+      const serializeFn = options && options.serialize;
+      let serializedParams;
+      if (serializeFn) {
+        serializedParams = serializeFn(params, options);
+      } else {
+        serializedParams = utils.isURLSearchParams(params) ? params.toString() : new AxiosURLSearchParams(params, options).toString(_encode);
+      }
+      if (serializedParams) {
+        const hashmarkIndex = url2.indexOf("#");
+        if (hashmarkIndex !== -1) {
+          url2 = url2.slice(0, hashmarkIndex);
+        }
+        url2 += (url2.indexOf("?") === -1 ? "?" : "&") + serializedParams;
+      }
+      return url2;
+    }
+    var InterceptorManager = class {
+      constructor() {
+        this.handlers = [];
+      }
+      use(fulfilled, rejected, options) {
+        this.handlers.push({
+          fulfilled,
+          rejected,
+          synchronous: options ? options.synchronous : false,
+          runWhen: options ? options.runWhen : null
+        });
+        return this.handlers.length - 1;
+      }
+      eject(id) {
+        if (this.handlers[id]) {
+          this.handlers[id] = null;
+        }
+      }
+      clear() {
+        if (this.handlers) {
+          this.handlers = [];
+        }
+      }
+      forEach(fn) {
+        utils.forEach(this.handlers, function forEachHandler(h2) {
+          if (h2 !== null) {
+            fn(h2);
+          }
+        });
+      }
+    };
+    var InterceptorManager$1 = InterceptorManager;
+    var transitionalDefaults = {
+      silentJSONParsing: true,
+      forcedJSONParsing: true,
+      clarifyTimeoutError: false
+    };
+    var URLSearchParams2 = url__default["default"].URLSearchParams;
+    var platform = {
+      isNode: true,
+      classes: {
+        URLSearchParams: URLSearchParams2,
+        FormData: FormData__default["default"],
+        Blob: typeof Blob !== "undefined" && Blob || null
+      },
+      protocols: ["http", "https", "file", "data"]
+    };
+    function toURLEncodedForm(data, options) {
+      return toFormData2(data, new platform.classes.URLSearchParams(), Object.assign({
+        visitor: function(value, key2, path, helpers) {
+          if (utils.isBuffer(value)) {
+            this.append(key2, value.toString("base64"));
+            return false;
+          }
+          return helpers.defaultVisitor.apply(this, arguments);
+        }
+      }, options));
+    }
+    function parsePropPath(name) {
+      return utils.matchAll(/\w+|\[(\w*)]/g, name).map((match) => {
+        return match[0] === "[]" ? "" : match[1] || match[0];
+      });
+    }
+    function arrayToObject(arr) {
+      const obj = {};
+      const keys2 = Object.keys(arr);
+      let i2;
+      const len = keys2.length;
+      let key2;
+      for (i2 = 0; i2 < len; i2++) {
+        key2 = keys2[i2];
+        obj[key2] = arr[key2];
+      }
+      return obj;
+    }
+    function formDataToJSON(formData) {
+      function buildPath(path, value, target, index) {
+        let name = path[index++];
+        const isNumericKey = Number.isFinite(+name);
+        const isLast = index >= path.length;
+        name = !name && utils.isArray(target) ? target.length : name;
+        if (isLast) {
+          if (utils.hasOwnProp(target, name)) {
+            target[name] = [target[name], value];
+          } else {
+            target[name] = value;
+          }
+          return !isNumericKey;
+        }
+        if (!target[name] || !utils.isObject(target[name])) {
+          target[name] = [];
+        }
+        const result = buildPath(path, value, target[name], index);
+        if (result && utils.isArray(target[name])) {
+          target[name] = arrayToObject(target[name]);
+        }
+        return !isNumericKey;
+      }
+      if (utils.isFormData(formData) && utils.isFunction(formData.entries)) {
+        const obj = {};
+        utils.forEachEntry(formData, (name, value) => {
+          buildPath(parsePropPath(name), value, obj, 0);
+        });
+        return obj;
+      }
+      return null;
+    }
+    var DEFAULT_CONTENT_TYPE = {
+      "Content-Type": void 0
+    };
     function stringifySafely(rawValue, parser, encoder) {
       if (utils.isString(rawValue)) {
         try {
@@ -3682,43 +13816,61 @@ var require_defaults = __commonJS({
       return (encoder || JSON.stringify)(rawValue);
     }
     var defaults = {
-      transitional: {
-        silentJSONParsing: true,
-        forcedJSONParsing: true,
-        clarifyTimeoutError: false
-      },
-      adapter: getDefaultAdapter(),
+      transitional: transitionalDefaults,
+      adapter: ["xhr", "http"],
       transformRequest: [function transformRequest(data, headers) {
-        normalizeHeaderName(headers, "Accept");
-        normalizeHeaderName(headers, "Content-Type");
-        if (utils.isFormData(data) || utils.isArrayBuffer(data) || utils.isBuffer(data) || utils.isStream(data) || utils.isFile(data) || utils.isBlob(data)) {
+        const contentType = headers.getContentType() || "";
+        const hasJSONContentType = contentType.indexOf("application/json") > -1;
+        const isObjectPayload = utils.isObject(data);
+        if (isObjectPayload && utils.isHTMLForm(data)) {
+          data = new FormData(data);
+        }
+        const isFormData2 = utils.isFormData(data);
+        if (isFormData2) {
+          if (!hasJSONContentType) {
+            return data;
+          }
+          return hasJSONContentType ? JSON.stringify(formDataToJSON(data)) : data;
+        }
+        if (utils.isArrayBuffer(data) || utils.isBuffer(data) || utils.isStream(data) || utils.isFile(data) || utils.isBlob(data)) {
           return data;
         }
         if (utils.isArrayBufferView(data)) {
           return data.buffer;
         }
         if (utils.isURLSearchParams(data)) {
-          setContentTypeIfUnset(headers, "application/x-www-form-urlencoded;charset=utf-8");
+          headers.setContentType("application/x-www-form-urlencoded;charset=utf-8", false);
           return data.toString();
         }
-        if (utils.isObject(data) || headers && headers["Content-Type"] === "application/json") {
-          setContentTypeIfUnset(headers, "application/json");
+        let isFileList2;
+        if (isObjectPayload) {
+          if (contentType.indexOf("application/x-www-form-urlencoded") > -1) {
+            return toURLEncodedForm(data, this.formSerializer).toString();
+          }
+          if ((isFileList2 = utils.isFileList(data)) || contentType.indexOf("multipart/form-data") > -1) {
+            const _FormData = this.env && this.env.FormData;
+            return toFormData2(isFileList2 ? { "files[]": data } : data, _FormData && new _FormData(), this.formSerializer);
+          }
+        }
+        if (isObjectPayload || hasJSONContentType) {
+          headers.setContentType("application/json", false);
           return stringifySafely(data);
         }
         return data;
       }],
       transformResponse: [function transformResponse(data) {
-        var transitional = this.transitional;
-        var silentJSONParsing = transitional && transitional.silentJSONParsing;
-        var forcedJSONParsing = transitional && transitional.forcedJSONParsing;
-        var strictJSONParsing = !silentJSONParsing && this.responseType === "json";
-        if (strictJSONParsing || forcedJSONParsing && utils.isString(data) && data.length) {
+        const transitional = this.transitional || defaults.transitional;
+        const forcedJSONParsing = transitional && transitional.forcedJSONParsing;
+        const JSONRequested = this.responseType === "json";
+        if (data && utils.isString(data) && (forcedJSONParsing && !this.responseType || JSONRequested)) {
+          const silentJSONParsing = transitional && transitional.silentJSONParsing;
+          const strictJSONParsing = !silentJSONParsing && JSONRequested;
           try {
             return JSON.parse(data);
           } catch (e2) {
             if (strictJSONParsing) {
               if (e2.name === "SyntaxError") {
-                throw enhanceError(e2, this, "E_JSON_PARSE");
+                throw AxiosError.from(e2, AxiosError.ERR_BAD_RESPONSE, this, null, this.response);
               }
               throw e2;
             }
@@ -3731,13 +13883,17 @@ var require_defaults = __commonJS({
       xsrfHeaderName: "X-XSRF-TOKEN",
       maxContentLength: -1,
       maxBodyLength: -1,
+      env: {
+        FormData: platform.classes.FormData,
+        Blob: platform.classes.Blob
+      },
       validateStatus: function validateStatus(status) {
         return status >= 200 && status < 300;
-      }
-    };
-    defaults.headers = {
-      common: {
-        "Accept": "application/json, text/plain, */*"
+      },
+      headers: {
+        common: {
+          "Accept": "application/json, text/plain, */*"
+        }
       }
     };
     utils.forEach(["delete", "get", "head"], function forEachMethodNoData(method) {
@@ -3746,114 +13902,1406 @@ var require_defaults = __commonJS({
     utils.forEach(["post", "put", "patch"], function forEachMethodWithData(method) {
       defaults.headers[method] = utils.merge(DEFAULT_CONTENT_TYPE);
     });
-    module2.exports = defaults;
-  }
-});
-
-// node_modules/axios/lib/core/transformData.js
-var require_transformData = __commonJS({
-  "node_modules/axios/lib/core/transformData.js"(exports, module2) {
-    "use strict";
-    var utils = require_utils2();
-    var defaults = require_defaults();
-    module2.exports = function transformData(data, headers, fns) {
-      var context = this || defaults;
-      utils.forEach(fns, function transform(fn) {
-        data = fn.call(context, data, headers);
+    var defaults$1 = defaults;
+    var ignoreDuplicateOf = utils.toObjectSet([
+      "age",
+      "authorization",
+      "content-length",
+      "content-type",
+      "etag",
+      "expires",
+      "from",
+      "host",
+      "if-modified-since",
+      "if-unmodified-since",
+      "last-modified",
+      "location",
+      "max-forwards",
+      "proxy-authorization",
+      "referer",
+      "retry-after",
+      "user-agent"
+    ]);
+    var parseHeaders = (rawHeaders) => {
+      const parsed = {};
+      let key2;
+      let val2;
+      let i2;
+      rawHeaders && rawHeaders.split("\n").forEach(function parser(line) {
+        i2 = line.indexOf(":");
+        key2 = line.substring(0, i2).trim().toLowerCase();
+        val2 = line.substring(i2 + 1).trim();
+        if (!key2 || parsed[key2] && ignoreDuplicateOf[key2]) {
+          return;
+        }
+        if (key2 === "set-cookie") {
+          if (parsed[key2]) {
+            parsed[key2].push(val2);
+          } else {
+            parsed[key2] = [val2];
+          }
+        } else {
+          parsed[key2] = parsed[key2] ? parsed[key2] + ", " + val2 : val2;
+        }
       });
+      return parsed;
+    };
+    var $internals = Symbol("internals");
+    function normalizeHeader(header) {
+      return header && String(header).trim().toLowerCase();
+    }
+    function normalizeValue(value) {
+      if (value === false || value == null) {
+        return value;
+      }
+      return utils.isArray(value) ? value.map(normalizeValue) : String(value);
+    }
+    function parseTokens(str) {
+      const tokens = /* @__PURE__ */ Object.create(null);
+      const tokensRE = /([^\s,;=]+)\s*(?:=\s*([^,;]+))?/g;
+      let match;
+      while (match = tokensRE.exec(str)) {
+        tokens[match[1]] = match[2];
+      }
+      return tokens;
+    }
+    var isValidHeaderName = (str) => /^[-_a-zA-Z0-9^`|~,!#$%&'*+.]+$/.test(str.trim());
+    function matchHeaderValue(context, value, header, filter, isHeaderNameFilter) {
+      if (utils.isFunction(filter)) {
+        return filter.call(this, value, header);
+      }
+      if (isHeaderNameFilter) {
+        value = header;
+      }
+      if (!utils.isString(value))
+        return;
+      if (utils.isString(filter)) {
+        return value.indexOf(filter) !== -1;
+      }
+      if (utils.isRegExp(filter)) {
+        return filter.test(value);
+      }
+    }
+    function formatHeader(header) {
+      return header.trim().toLowerCase().replace(/([a-z\d])(\w*)/g, (w, char, str) => {
+        return char.toUpperCase() + str;
+      });
+    }
+    function buildAccessors(obj, header) {
+      const accessorName = utils.toCamelCase(" " + header);
+      ["get", "set", "has"].forEach((methodName) => {
+        Object.defineProperty(obj, methodName + accessorName, {
+          value: function(arg1, arg2, arg3) {
+            return this[methodName].call(this, header, arg1, arg2, arg3);
+          },
+          configurable: true
+        });
+      });
+    }
+    var AxiosHeaders = class {
+      constructor(headers) {
+        headers && this.set(headers);
+      }
+      set(header, valueOrRewrite, rewrite) {
+        const self2 = this;
+        function setHeader(_value, _header, _rewrite) {
+          const lHeader = normalizeHeader(_header);
+          if (!lHeader) {
+            throw new Error("header name must be a non-empty string");
+          }
+          const key2 = utils.findKey(self2, lHeader);
+          if (!key2 || self2[key2] === void 0 || _rewrite === true || _rewrite === void 0 && self2[key2] !== false) {
+            self2[key2 || _header] = normalizeValue(_value);
+          }
+        }
+        const setHeaders = (headers, _rewrite) => utils.forEach(headers, (_value, _header) => setHeader(_value, _header, _rewrite));
+        if (utils.isPlainObject(header) || header instanceof this.constructor) {
+          setHeaders(header, valueOrRewrite);
+        } else if (utils.isString(header) && (header = header.trim()) && !isValidHeaderName(header)) {
+          setHeaders(parseHeaders(header), valueOrRewrite);
+        } else {
+          header != null && setHeader(valueOrRewrite, header, rewrite);
+        }
+        return this;
+      }
+      get(header, parser) {
+        header = normalizeHeader(header);
+        if (header) {
+          const key2 = utils.findKey(this, header);
+          if (key2) {
+            const value = this[key2];
+            if (!parser) {
+              return value;
+            }
+            if (parser === true) {
+              return parseTokens(value);
+            }
+            if (utils.isFunction(parser)) {
+              return parser.call(this, value, key2);
+            }
+            if (utils.isRegExp(parser)) {
+              return parser.exec(value);
+            }
+            throw new TypeError("parser must be boolean|regexp|function");
+          }
+        }
+      }
+      has(header, matcher) {
+        header = normalizeHeader(header);
+        if (header) {
+          const key2 = utils.findKey(this, header);
+          return !!(key2 && this[key2] !== void 0 && (!matcher || matchHeaderValue(this, this[key2], key2, matcher)));
+        }
+        return false;
+      }
+      delete(header, matcher) {
+        const self2 = this;
+        let deleted = false;
+        function deleteHeader(_header) {
+          _header = normalizeHeader(_header);
+          if (_header) {
+            const key2 = utils.findKey(self2, _header);
+            if (key2 && (!matcher || matchHeaderValue(self2, self2[key2], key2, matcher))) {
+              delete self2[key2];
+              deleted = true;
+            }
+          }
+        }
+        if (utils.isArray(header)) {
+          header.forEach(deleteHeader);
+        } else {
+          deleteHeader(header);
+        }
+        return deleted;
+      }
+      clear(matcher) {
+        const keys2 = Object.keys(this);
+        let i2 = keys2.length;
+        let deleted = false;
+        while (i2--) {
+          const key2 = keys2[i2];
+          if (!matcher || matchHeaderValue(this, this[key2], key2, matcher, true)) {
+            delete this[key2];
+            deleted = true;
+          }
+        }
+        return deleted;
+      }
+      normalize(format) {
+        const self2 = this;
+        const headers = {};
+        utils.forEach(this, (value, header) => {
+          const key2 = utils.findKey(headers, header);
+          if (key2) {
+            self2[key2] = normalizeValue(value);
+            delete self2[header];
+            return;
+          }
+          const normalized = format ? formatHeader(header) : String(header).trim();
+          if (normalized !== header) {
+            delete self2[header];
+          }
+          self2[normalized] = normalizeValue(value);
+          headers[normalized] = true;
+        });
+        return this;
+      }
+      concat(...targets) {
+        return this.constructor.concat(this, ...targets);
+      }
+      toJSON(asStrings) {
+        const obj = /* @__PURE__ */ Object.create(null);
+        utils.forEach(this, (value, header) => {
+          value != null && value !== false && (obj[header] = asStrings && utils.isArray(value) ? value.join(", ") : value);
+        });
+        return obj;
+      }
+      [Symbol.iterator]() {
+        return Object.entries(this.toJSON())[Symbol.iterator]();
+      }
+      toString() {
+        return Object.entries(this.toJSON()).map(([header, value]) => header + ": " + value).join("\n");
+      }
+      get [Symbol.toStringTag]() {
+        return "AxiosHeaders";
+      }
+      static from(thing) {
+        return thing instanceof this ? thing : new this(thing);
+      }
+      static concat(first, ...targets) {
+        const computed = new this(first);
+        targets.forEach((target) => computed.set(target));
+        return computed;
+      }
+      static accessor(header) {
+        const internals = this[$internals] = this[$internals] = {
+          accessors: {}
+        };
+        const accessors = internals.accessors;
+        const prototype3 = this.prototype;
+        function defineAccessor(_header) {
+          const lHeader = normalizeHeader(_header);
+          if (!accessors[lHeader]) {
+            buildAccessors(prototype3, _header);
+            accessors[lHeader] = true;
+          }
+        }
+        utils.isArray(header) ? header.forEach(defineAccessor) : defineAccessor(header);
+        return this;
+      }
+    };
+    AxiosHeaders.accessor(["Content-Type", "Content-Length", "Accept", "Accept-Encoding", "User-Agent", "Authorization"]);
+    utils.freezeMethods(AxiosHeaders.prototype);
+    utils.freezeMethods(AxiosHeaders);
+    var AxiosHeaders$1 = AxiosHeaders;
+    function transformData(fns, response) {
+      const config = this || defaults$1;
+      const context = response || config;
+      const headers = AxiosHeaders$1.from(context.headers);
+      let data = context.data;
+      utils.forEach(fns, function transform(fn) {
+        data = fn.call(config, data, headers.normalize(), response ? response.status : void 0);
+      });
+      headers.normalize();
       return data;
-    };
-  }
-});
-
-// node_modules/axios/lib/cancel/isCancel.js
-var require_isCancel = __commonJS({
-  "node_modules/axios/lib/cancel/isCancel.js"(exports, module2) {
-    "use strict";
-    module2.exports = function isCancel(value) {
+    }
+    function isCancel(value) {
       return !!(value && value.__CANCEL__);
+    }
+    function CanceledError(message, config, request) {
+      AxiosError.call(this, message == null ? "canceled" : message, AxiosError.ERR_CANCELED, config, request);
+      this.name = "CanceledError";
+    }
+    utils.inherits(CanceledError, AxiosError, {
+      __CANCEL__: true
+    });
+    function settle(resolve, reject, response) {
+      const validateStatus = response.config.validateStatus;
+      if (!response.status || !validateStatus || validateStatus(response.status)) {
+        resolve(response);
+      } else {
+        reject(new AxiosError("Request failed with status code " + response.status, [AxiosError.ERR_BAD_REQUEST, AxiosError.ERR_BAD_RESPONSE][Math.floor(response.status / 100) - 4], response.config, response.request, response));
+      }
+    }
+    function isAbsoluteURL(url2) {
+      return /^([a-z][a-z\d+\-.]*:)?\/\//i.test(url2);
+    }
+    function combineURLs(baseURL, relativeURL) {
+      return relativeURL ? baseURL.replace(/\/+$/, "") + "/" + relativeURL.replace(/^\/+/, "") : baseURL;
+    }
+    function buildFullPath(baseURL, requestedURL) {
+      if (baseURL && !isAbsoluteURL(requestedURL)) {
+        return combineURLs(baseURL, requestedURL);
+      }
+      return requestedURL;
+    }
+    var VERSION = "1.4.0";
+    function parseProtocol(url2) {
+      const match = /^([-+\w]{1,25})(:?\/\/|:)/.exec(url2);
+      return match && match[1] || "";
+    }
+    var DATA_URL_PATTERN = /^(?:([^;]+);)?(?:[^;]+;)?(base64|),([\s\S]*)$/;
+    function fromDataURI(uri, asBlob, options) {
+      const _Blob2 = options && options.Blob || platform.classes.Blob;
+      const protocol = parseProtocol(uri);
+      if (asBlob === void 0 && _Blob2) {
+        asBlob = true;
+      }
+      if (protocol === "data") {
+        uri = protocol.length ? uri.slice(protocol.length + 1) : uri;
+        const match = DATA_URL_PATTERN.exec(uri);
+        if (!match) {
+          throw new AxiosError("Invalid URL", AxiosError.ERR_INVALID_URL);
+        }
+        const mime = match[1];
+        const isBase64 = match[2];
+        const body = match[3];
+        const buffer = Buffer.from(decodeURIComponent(body), isBase64 ? "base64" : "utf8");
+        if (asBlob) {
+          if (!_Blob2) {
+            throw new AxiosError("Blob is not supported", AxiosError.ERR_NOT_SUPPORT);
+          }
+          return new _Blob2([buffer], { type: mime });
+        }
+        return buffer;
+      }
+      throw new AxiosError("Unsupported protocol " + protocol, AxiosError.ERR_NOT_SUPPORT);
+    }
+    function throttle(fn, freq) {
+      let timestamp = 0;
+      const threshold = 1e3 / freq;
+      let timer = null;
+      return function throttled(force, args) {
+        const now = Date.now();
+        if (force || now - timestamp > threshold) {
+          if (timer) {
+            clearTimeout(timer);
+            timer = null;
+          }
+          timestamp = now;
+          return fn.apply(null, args);
+        }
+        if (!timer) {
+          timer = setTimeout(() => {
+            timer = null;
+            timestamp = Date.now();
+            return fn.apply(null, args);
+          }, threshold - (now - timestamp));
+        }
+      };
+    }
+    function speedometer(samplesCount, min) {
+      samplesCount = samplesCount || 10;
+      const bytes = new Array(samplesCount);
+      const timestamps = new Array(samplesCount);
+      let head = 0;
+      let tail = 0;
+      let firstSampleTS;
+      min = min !== void 0 ? min : 1e3;
+      return function push2(chunkLength) {
+        const now = Date.now();
+        const startedAt = timestamps[tail];
+        if (!firstSampleTS) {
+          firstSampleTS = now;
+        }
+        bytes[head] = chunkLength;
+        timestamps[head] = now;
+        let i2 = tail;
+        let bytesCount = 0;
+        while (i2 !== head) {
+          bytesCount += bytes[i2++];
+          i2 = i2 % samplesCount;
+        }
+        head = (head + 1) % samplesCount;
+        if (head === tail) {
+          tail = (tail + 1) % samplesCount;
+        }
+        if (now - firstSampleTS < min) {
+          return;
+        }
+        const passed = startedAt && now - startedAt;
+        return passed ? Math.round(bytesCount * 1e3 / passed) : void 0;
+      };
+    }
+    var kInternals = Symbol("internals");
+    var AxiosTransformStream = class extends stream__default["default"].Transform {
+      constructor(options) {
+        options = utils.toFlatObject(options, {
+          maxRate: 0,
+          chunkSize: 64 * 1024,
+          minChunkSize: 100,
+          timeWindow: 500,
+          ticksRate: 2,
+          samplesCount: 15
+        }, null, (prop2, source) => {
+          return !utils.isUndefined(source[prop2]);
+        });
+        super({
+          readableHighWaterMark: options.chunkSize
+        });
+        const self2 = this;
+        const internals = this[kInternals] = {
+          length: options.length,
+          timeWindow: options.timeWindow,
+          ticksRate: options.ticksRate,
+          chunkSize: options.chunkSize,
+          maxRate: options.maxRate,
+          minChunkSize: options.minChunkSize,
+          bytesSeen: 0,
+          isCaptured: false,
+          notifiedBytesLoaded: 0,
+          ts: Date.now(),
+          bytes: 0,
+          onReadCallback: null
+        };
+        const _speedometer = speedometer(internals.ticksRate * options.samplesCount, internals.timeWindow);
+        this.on("newListener", (event) => {
+          if (event === "progress") {
+            if (!internals.isCaptured) {
+              internals.isCaptured = true;
+            }
+          }
+        });
+        let bytesNotified = 0;
+        internals.updateProgress = throttle(function throttledHandler() {
+          const totalBytes = internals.length;
+          const bytesTransferred = internals.bytesSeen;
+          const progressBytes = bytesTransferred - bytesNotified;
+          if (!progressBytes || self2.destroyed)
+            return;
+          const rate = _speedometer(progressBytes);
+          bytesNotified = bytesTransferred;
+          process.nextTick(() => {
+            self2.emit("progress", {
+              "loaded": bytesTransferred,
+              "total": totalBytes,
+              "progress": totalBytes ? bytesTransferred / totalBytes : void 0,
+              "bytes": progressBytes,
+              "rate": rate ? rate : void 0,
+              "estimated": rate && totalBytes && bytesTransferred <= totalBytes ? (totalBytes - bytesTransferred) / rate : void 0
+            });
+          });
+        }, internals.ticksRate);
+        const onFinish = () => {
+          internals.updateProgress(true);
+        };
+        this.once("end", onFinish);
+        this.once("error", onFinish);
+      }
+      _read(size) {
+        const internals = this[kInternals];
+        if (internals.onReadCallback) {
+          internals.onReadCallback();
+        }
+        return super._read(size);
+      }
+      _transform(chunk, encoding, callback) {
+        const self2 = this;
+        const internals = this[kInternals];
+        const maxRate = internals.maxRate;
+        const readableHighWaterMark = this.readableHighWaterMark;
+        const timeWindow = internals.timeWindow;
+        const divider = 1e3 / timeWindow;
+        const bytesThreshold = maxRate / divider;
+        const minChunkSize = internals.minChunkSize !== false ? Math.max(internals.minChunkSize, bytesThreshold * 0.01) : 0;
+        function pushChunk(_chunk, _callback) {
+          const bytes = Buffer.byteLength(_chunk);
+          internals.bytesSeen += bytes;
+          internals.bytes += bytes;
+          if (internals.isCaptured) {
+            internals.updateProgress();
+          }
+          if (self2.push(_chunk)) {
+            process.nextTick(_callback);
+          } else {
+            internals.onReadCallback = () => {
+              internals.onReadCallback = null;
+              process.nextTick(_callback);
+            };
+          }
+        }
+        const transformChunk = (_chunk, _callback) => {
+          const chunkSize = Buffer.byteLength(_chunk);
+          let chunkRemainder = null;
+          let maxChunkSize = readableHighWaterMark;
+          let bytesLeft;
+          let passed = 0;
+          if (maxRate) {
+            const now = Date.now();
+            if (!internals.ts || (passed = now - internals.ts) >= timeWindow) {
+              internals.ts = now;
+              bytesLeft = bytesThreshold - internals.bytes;
+              internals.bytes = bytesLeft < 0 ? -bytesLeft : 0;
+              passed = 0;
+            }
+            bytesLeft = bytesThreshold - internals.bytes;
+          }
+          if (maxRate) {
+            if (bytesLeft <= 0) {
+              return setTimeout(() => {
+                _callback(null, _chunk);
+              }, timeWindow - passed);
+            }
+            if (bytesLeft < maxChunkSize) {
+              maxChunkSize = bytesLeft;
+            }
+          }
+          if (maxChunkSize && chunkSize > maxChunkSize && chunkSize - maxChunkSize > minChunkSize) {
+            chunkRemainder = _chunk.subarray(maxChunkSize);
+            _chunk = _chunk.subarray(0, maxChunkSize);
+          }
+          pushChunk(_chunk, chunkRemainder ? () => {
+            process.nextTick(_callback, null, chunkRemainder);
+          } : _callback);
+        };
+        transformChunk(chunk, function transformNextChunk(err, _chunk) {
+          if (err) {
+            return callback(err);
+          }
+          if (_chunk) {
+            transformChunk(_chunk, transformNextChunk);
+          } else {
+            callback(null);
+          }
+        });
+      }
+      setLength(length) {
+        this[kInternals].length = +length;
+        return this;
+      }
     };
-  }
-});
-
-// node_modules/axios/lib/core/dispatchRequest.js
-var require_dispatchRequest = __commonJS({
-  "node_modules/axios/lib/core/dispatchRequest.js"(exports, module2) {
-    "use strict";
-    var utils = require_utils2();
-    var transformData = require_transformData();
-    var isCancel = require_isCancel();
-    var defaults = require_defaults();
+    var AxiosTransformStream$1 = AxiosTransformStream;
+    var { asyncIterator } = Symbol;
+    var readBlob = async function* (blob) {
+      if (blob.stream) {
+        yield* blob.stream();
+      } else if (blob.arrayBuffer) {
+        yield await blob.arrayBuffer();
+      } else if (blob[asyncIterator]) {
+        yield* blob[asyncIterator]();
+      } else {
+        yield blob;
+      }
+    };
+    var readBlob$1 = readBlob;
+    var BOUNDARY_ALPHABET = utils.ALPHABET.ALPHA_DIGIT + "-_";
+    var textEncoder = new util.TextEncoder();
+    var CRLF = "\r\n";
+    var CRLF_BYTES = textEncoder.encode(CRLF);
+    var CRLF_BYTES_COUNT = 2;
+    var FormDataPart = class {
+      constructor(name, value) {
+        const { escapeName } = this.constructor;
+        const isStringValue = utils.isString(value);
+        let headers = `Content-Disposition: form-data; name="${escapeName(name)}"${!isStringValue && value.name ? `; filename="${escapeName(value.name)}"` : ""}${CRLF}`;
+        if (isStringValue) {
+          value = textEncoder.encode(String(value).replace(/\r?\n|\r\n?/g, CRLF));
+        } else {
+          headers += `Content-Type: ${value.type || "application/octet-stream"}${CRLF}`;
+        }
+        this.headers = textEncoder.encode(headers + CRLF);
+        this.contentLength = isStringValue ? value.byteLength : value.size;
+        this.size = this.headers.byteLength + this.contentLength + CRLF_BYTES_COUNT;
+        this.name = name;
+        this.value = value;
+      }
+      async *encode() {
+        yield this.headers;
+        const { value } = this;
+        if (utils.isTypedArray(value)) {
+          yield value;
+        } else {
+          yield* readBlob$1(value);
+        }
+        yield CRLF_BYTES;
+      }
+      static escapeName(name) {
+        return String(name).replace(/[\r\n"]/g, (match) => ({
+          "\r": "%0D",
+          "\n": "%0A",
+          '"': "%22"
+        })[match]);
+      }
+    };
+    var formDataToStream = (form, headersHandler, options) => {
+      const {
+        tag = "form-data-boundary",
+        size = 25,
+        boundary = tag + "-" + utils.generateString(size, BOUNDARY_ALPHABET)
+      } = options || {};
+      if (!utils.isFormData(form)) {
+        throw TypeError("FormData instance required");
+      }
+      if (boundary.length < 1 || boundary.length > 70) {
+        throw Error("boundary must be 10-70 characters long");
+      }
+      const boundaryBytes = textEncoder.encode("--" + boundary + CRLF);
+      const footerBytes = textEncoder.encode("--" + boundary + "--" + CRLF + CRLF);
+      let contentLength = footerBytes.byteLength;
+      const parts = Array.from(form.entries()).map(([name, value]) => {
+        const part = new FormDataPart(name, value);
+        contentLength += part.size;
+        return part;
+      });
+      contentLength += boundaryBytes.byteLength * parts.length;
+      contentLength = utils.toFiniteNumber(contentLength);
+      const computedHeaders = {
+        "Content-Type": `multipart/form-data; boundary=${boundary}`
+      };
+      if (Number.isFinite(contentLength)) {
+        computedHeaders["Content-Length"] = contentLength;
+      }
+      headersHandler && headersHandler(computedHeaders);
+      return stream.Readable.from(async function* () {
+        for (const part of parts) {
+          yield boundaryBytes;
+          yield* part.encode();
+        }
+        yield footerBytes;
+      }());
+    };
+    var formDataToStream$1 = formDataToStream;
+    var ZlibHeaderTransformStream = class extends stream__default["default"].Transform {
+      __transform(chunk, encoding, callback) {
+        this.push(chunk);
+        callback();
+      }
+      _transform(chunk, encoding, callback) {
+        if (chunk.length !== 0) {
+          this._transform = this.__transform;
+          if (chunk[0] !== 120) {
+            const header = Buffer.alloc(2);
+            header[0] = 120;
+            header[1] = 156;
+            this.push(header, encoding);
+          }
+        }
+        this.__transform(chunk, encoding, callback);
+      }
+    };
+    var ZlibHeaderTransformStream$1 = ZlibHeaderTransformStream;
+    var callbackify = (fn, reducer) => {
+      return utils.isAsyncFn(fn) ? function(...args) {
+        const cb = args.pop();
+        fn.apply(this, args).then((value) => {
+          try {
+            reducer ? cb(null, ...reducer(value)) : cb(null, value);
+          } catch (err) {
+            cb(err);
+          }
+        }, cb);
+      } : fn;
+    };
+    var callbackify$1 = callbackify;
+    var zlibOptions = {
+      flush: zlib__default["default"].constants.Z_SYNC_FLUSH,
+      finishFlush: zlib__default["default"].constants.Z_SYNC_FLUSH
+    };
+    var brotliOptions = {
+      flush: zlib__default["default"].constants.BROTLI_OPERATION_FLUSH,
+      finishFlush: zlib__default["default"].constants.BROTLI_OPERATION_FLUSH
+    };
+    var isBrotliSupported = utils.isFunction(zlib__default["default"].createBrotliDecompress);
+    var { http: httpFollow, https: httpsFollow } = followRedirects__default["default"];
+    var isHttps = /https:?/;
+    var supportedProtocols = platform.protocols.map((protocol) => {
+      return protocol + ":";
+    });
+    function dispatchBeforeRedirect(options) {
+      if (options.beforeRedirects.proxy) {
+        options.beforeRedirects.proxy(options);
+      }
+      if (options.beforeRedirects.config) {
+        options.beforeRedirects.config(options);
+      }
+    }
+    function setProxy(options, configProxy, location) {
+      let proxy = configProxy;
+      if (!proxy && proxy !== false) {
+        const proxyUrl = proxyFromEnv.getProxyForUrl(location);
+        if (proxyUrl) {
+          proxy = new URL(proxyUrl);
+        }
+      }
+      if (proxy) {
+        if (proxy.username) {
+          proxy.auth = (proxy.username || "") + ":" + (proxy.password || "");
+        }
+        if (proxy.auth) {
+          if (proxy.auth.username || proxy.auth.password) {
+            proxy.auth = (proxy.auth.username || "") + ":" + (proxy.auth.password || "");
+          }
+          const base64 = Buffer.from(proxy.auth, "utf8").toString("base64");
+          options.headers["Proxy-Authorization"] = "Basic " + base64;
+        }
+        options.headers.host = options.hostname + (options.port ? ":" + options.port : "");
+        const proxyHost = proxy.hostname || proxy.host;
+        options.hostname = proxyHost;
+        options.host = proxyHost;
+        options.port = proxy.port;
+        options.path = location;
+        if (proxy.protocol) {
+          options.protocol = proxy.protocol.includes(":") ? proxy.protocol : `${proxy.protocol}:`;
+        }
+      }
+      options.beforeRedirects.proxy = function beforeRedirect(redirectOptions) {
+        setProxy(redirectOptions, configProxy, redirectOptions.href);
+      };
+    }
+    var isHttpAdapterSupported = typeof process !== "undefined" && utils.kindOf(process) === "process";
+    var wrapAsync = (asyncExecutor) => {
+      return new Promise((resolve, reject) => {
+        let onDone;
+        let isDone;
+        const done = (value, isRejected) => {
+          if (isDone)
+            return;
+          isDone = true;
+          onDone && onDone(value, isRejected);
+        };
+        const _resolve = (value) => {
+          done(value);
+          resolve(value);
+        };
+        const _reject = (reason) => {
+          done(reason, true);
+          reject(reason);
+        };
+        asyncExecutor(_resolve, _reject, (onDoneHandler) => onDone = onDoneHandler).catch(_reject);
+      });
+    };
+    var httpAdapter = isHttpAdapterSupported && function httpAdapter2(config) {
+      return wrapAsync(async function dispatchHttpRequest(resolve, reject, onDone) {
+        let { data, lookup, family } = config;
+        const { responseType, responseEncoding } = config;
+        const method = config.method.toUpperCase();
+        let isDone;
+        let rejected = false;
+        let req;
+        if (lookup && utils.isAsyncFn(lookup)) {
+          lookup = callbackify$1(lookup, (entry) => {
+            if (utils.isString(entry)) {
+              entry = [entry, entry.indexOf(".") < 0 ? 6 : 4];
+            } else if (!utils.isArray(entry)) {
+              throw new TypeError("lookup async function must return an array [ip: string, family: number]]");
+            }
+            return entry;
+          });
+        }
+        const emitter = new EventEmitter__default["default"]();
+        const onFinished = () => {
+          if (config.cancelToken) {
+            config.cancelToken.unsubscribe(abort);
+          }
+          if (config.signal) {
+            config.signal.removeEventListener("abort", abort);
+          }
+          emitter.removeAllListeners();
+        };
+        onDone((value, isRejected) => {
+          isDone = true;
+          if (isRejected) {
+            rejected = true;
+            onFinished();
+          }
+        });
+        function abort(reason) {
+          emitter.emit("abort", !reason || reason.type ? new CanceledError(null, config, req) : reason);
+        }
+        emitter.once("abort", reject);
+        if (config.cancelToken || config.signal) {
+          config.cancelToken && config.cancelToken.subscribe(abort);
+          if (config.signal) {
+            config.signal.aborted ? abort() : config.signal.addEventListener("abort", abort);
+          }
+        }
+        const fullPath = buildFullPath(config.baseURL, config.url);
+        const parsed = new URL(fullPath, "http://localhost");
+        const protocol = parsed.protocol || supportedProtocols[0];
+        if (protocol === "data:") {
+          let convertedData;
+          if (method !== "GET") {
+            return settle(resolve, reject, {
+              status: 405,
+              statusText: "method not allowed",
+              headers: {},
+              config
+            });
+          }
+          try {
+            convertedData = fromDataURI(config.url, responseType === "blob", {
+              Blob: config.env && config.env.Blob
+            });
+          } catch (err) {
+            throw AxiosError.from(err, AxiosError.ERR_BAD_REQUEST, config);
+          }
+          if (responseType === "text") {
+            convertedData = convertedData.toString(responseEncoding);
+            if (!responseEncoding || responseEncoding === "utf8") {
+              convertedData = utils.stripBOM(convertedData);
+            }
+          } else if (responseType === "stream") {
+            convertedData = stream__default["default"].Readable.from(convertedData);
+          }
+          return settle(resolve, reject, {
+            data: convertedData,
+            status: 200,
+            statusText: "OK",
+            headers: new AxiosHeaders$1(),
+            config
+          });
+        }
+        if (supportedProtocols.indexOf(protocol) === -1) {
+          return reject(new AxiosError("Unsupported protocol " + protocol, AxiosError.ERR_BAD_REQUEST, config));
+        }
+        const headers = AxiosHeaders$1.from(config.headers).normalize();
+        headers.set("User-Agent", "axios/" + VERSION, false);
+        const onDownloadProgress = config.onDownloadProgress;
+        const onUploadProgress = config.onUploadProgress;
+        const maxRate = config.maxRate;
+        let maxUploadRate = void 0;
+        let maxDownloadRate = void 0;
+        if (utils.isSpecCompliantForm(data)) {
+          const userBoundary = headers.getContentType(/boundary=([-_\w\d]{10,70})/i);
+          data = formDataToStream$1(data, (formHeaders) => {
+            headers.set(formHeaders);
+          }, {
+            tag: `axios-${VERSION}-boundary`,
+            boundary: userBoundary && userBoundary[1] || void 0
+          });
+        } else if (utils.isFormData(data) && utils.isFunction(data.getHeaders)) {
+          headers.set(data.getHeaders());
+          if (!headers.hasContentLength()) {
+            try {
+              const knownLength = await util__default["default"].promisify(data.getLength).call(data);
+              Number.isFinite(knownLength) && knownLength >= 0 && headers.setContentLength(knownLength);
+            } catch (e2) {
+            }
+          }
+        } else if (utils.isBlob(data)) {
+          data.size && headers.setContentType(data.type || "application/octet-stream");
+          headers.setContentLength(data.size || 0);
+          data = stream__default["default"].Readable.from(readBlob$1(data));
+        } else if (data && !utils.isStream(data)) {
+          if (Buffer.isBuffer(data))
+            ;
+          else if (utils.isArrayBuffer(data)) {
+            data = Buffer.from(new Uint8Array(data));
+          } else if (utils.isString(data)) {
+            data = Buffer.from(data, "utf-8");
+          } else {
+            return reject(new AxiosError("Data after transformation must be a string, an ArrayBuffer, a Buffer, or a Stream", AxiosError.ERR_BAD_REQUEST, config));
+          }
+          headers.setContentLength(data.length, false);
+          if (config.maxBodyLength > -1 && data.length > config.maxBodyLength) {
+            return reject(new AxiosError("Request body larger than maxBodyLength limit", AxiosError.ERR_BAD_REQUEST, config));
+          }
+        }
+        const contentLength = utils.toFiniteNumber(headers.getContentLength());
+        if (utils.isArray(maxRate)) {
+          maxUploadRate = maxRate[0];
+          maxDownloadRate = maxRate[1];
+        } else {
+          maxUploadRate = maxDownloadRate = maxRate;
+        }
+        if (data && (onUploadProgress || maxUploadRate)) {
+          if (!utils.isStream(data)) {
+            data = stream__default["default"].Readable.from(data, { objectMode: false });
+          }
+          data = stream__default["default"].pipeline([data, new AxiosTransformStream$1({
+            length: contentLength,
+            maxRate: utils.toFiniteNumber(maxUploadRate)
+          })], utils.noop);
+          onUploadProgress && data.on("progress", (progress) => {
+            onUploadProgress(Object.assign(progress, {
+              upload: true
+            }));
+          });
+        }
+        let auth = void 0;
+        if (config.auth) {
+          const username = config.auth.username || "";
+          const password = config.auth.password || "";
+          auth = username + ":" + password;
+        }
+        if (!auth && parsed.username) {
+          const urlUsername = parsed.username;
+          const urlPassword = parsed.password;
+          auth = urlUsername + ":" + urlPassword;
+        }
+        auth && headers.delete("authorization");
+        let path;
+        try {
+          path = buildURL(parsed.pathname + parsed.search, config.params, config.paramsSerializer).replace(/^\?/, "");
+        } catch (err) {
+          const customErr = new Error(err.message);
+          customErr.config = config;
+          customErr.url = config.url;
+          customErr.exists = true;
+          return reject(customErr);
+        }
+        headers.set("Accept-Encoding", "gzip, compress, deflate" + (isBrotliSupported ? ", br" : ""), false);
+        const options = {
+          path,
+          method,
+          headers: headers.toJSON(),
+          agents: { http: config.httpAgent, https: config.httpsAgent },
+          auth,
+          protocol,
+          family,
+          lookup,
+          beforeRedirect: dispatchBeforeRedirect,
+          beforeRedirects: {}
+        };
+        if (config.socketPath) {
+          options.socketPath = config.socketPath;
+        } else {
+          options.hostname = parsed.hostname;
+          options.port = parsed.port;
+          setProxy(options, config.proxy, protocol + "//" + parsed.hostname + (parsed.port ? ":" + parsed.port : "") + options.path);
+        }
+        let transport;
+        const isHttpsRequest = isHttps.test(options.protocol);
+        options.agent = isHttpsRequest ? config.httpsAgent : config.httpAgent;
+        if (config.transport) {
+          transport = config.transport;
+        } else if (config.maxRedirects === 0) {
+          transport = isHttpsRequest ? https__default["default"] : http__default["default"];
+        } else {
+          if (config.maxRedirects) {
+            options.maxRedirects = config.maxRedirects;
+          }
+          if (config.beforeRedirect) {
+            options.beforeRedirects.config = config.beforeRedirect;
+          }
+          transport = isHttpsRequest ? httpsFollow : httpFollow;
+        }
+        if (config.maxBodyLength > -1) {
+          options.maxBodyLength = config.maxBodyLength;
+        } else {
+          options.maxBodyLength = Infinity;
+        }
+        if (config.insecureHTTPParser) {
+          options.insecureHTTPParser = config.insecureHTTPParser;
+        }
+        req = transport.request(options, function handleResponse(res) {
+          if (req.destroyed)
+            return;
+          const streams = [res];
+          const responseLength = +res.headers["content-length"];
+          if (onDownloadProgress) {
+            const transformStream = new AxiosTransformStream$1({
+              length: utils.toFiniteNumber(responseLength),
+              maxRate: utils.toFiniteNumber(maxDownloadRate)
+            });
+            onDownloadProgress && transformStream.on("progress", (progress) => {
+              onDownloadProgress(Object.assign(progress, {
+                download: true
+              }));
+            });
+            streams.push(transformStream);
+          }
+          let responseStream = res;
+          const lastRequest = res.req || req;
+          if (config.decompress !== false && res.headers["content-encoding"]) {
+            if (method === "HEAD" || res.statusCode === 204) {
+              delete res.headers["content-encoding"];
+            }
+            switch (res.headers["content-encoding"]) {
+              case "gzip":
+              case "x-gzip":
+              case "compress":
+              case "x-compress":
+                streams.push(zlib__default["default"].createUnzip(zlibOptions));
+                delete res.headers["content-encoding"];
+                break;
+              case "deflate":
+                streams.push(new ZlibHeaderTransformStream$1());
+                streams.push(zlib__default["default"].createUnzip(zlibOptions));
+                delete res.headers["content-encoding"];
+                break;
+              case "br":
+                if (isBrotliSupported) {
+                  streams.push(zlib__default["default"].createBrotliDecompress(brotliOptions));
+                  delete res.headers["content-encoding"];
+                }
+            }
+          }
+          responseStream = streams.length > 1 ? stream__default["default"].pipeline(streams, utils.noop) : streams[0];
+          const offListeners = stream__default["default"].finished(responseStream, () => {
+            offListeners();
+            onFinished();
+          });
+          const response = {
+            status: res.statusCode,
+            statusText: res.statusMessage,
+            headers: new AxiosHeaders$1(res.headers),
+            config,
+            request: lastRequest
+          };
+          if (responseType === "stream") {
+            response.data = responseStream;
+            settle(resolve, reject, response);
+          } else {
+            const responseBuffer = [];
+            let totalResponseBytes = 0;
+            responseStream.on("data", function handleStreamData(chunk) {
+              responseBuffer.push(chunk);
+              totalResponseBytes += chunk.length;
+              if (config.maxContentLength > -1 && totalResponseBytes > config.maxContentLength) {
+                rejected = true;
+                responseStream.destroy();
+                reject(new AxiosError("maxContentLength size of " + config.maxContentLength + " exceeded", AxiosError.ERR_BAD_RESPONSE, config, lastRequest));
+              }
+            });
+            responseStream.on("aborted", function handlerStreamAborted() {
+              if (rejected) {
+                return;
+              }
+              const err = new AxiosError("maxContentLength size of " + config.maxContentLength + " exceeded", AxiosError.ERR_BAD_RESPONSE, config, lastRequest);
+              responseStream.destroy(err);
+              reject(err);
+            });
+            responseStream.on("error", function handleStreamError(err) {
+              if (req.destroyed)
+                return;
+              reject(AxiosError.from(err, null, config, lastRequest));
+            });
+            responseStream.on("end", function handleStreamEnd() {
+              try {
+                let responseData = responseBuffer.length === 1 ? responseBuffer[0] : Buffer.concat(responseBuffer);
+                if (responseType !== "arraybuffer") {
+                  responseData = responseData.toString(responseEncoding);
+                  if (!responseEncoding || responseEncoding === "utf8") {
+                    responseData = utils.stripBOM(responseData);
+                  }
+                }
+                response.data = responseData;
+              } catch (err) {
+                reject(AxiosError.from(err, null, config, response.request, response));
+              }
+              settle(resolve, reject, response);
+            });
+          }
+          emitter.once("abort", (err) => {
+            if (!responseStream.destroyed) {
+              responseStream.emit("error", err);
+              responseStream.destroy();
+            }
+          });
+        });
+        emitter.once("abort", (err) => {
+          reject(err);
+          req.destroy(err);
+        });
+        req.on("error", function handleRequestError(err) {
+          reject(AxiosError.from(err, null, config, req));
+        });
+        req.on("socket", function handleRequestSocket(socket) {
+          socket.setKeepAlive(true, 1e3 * 60);
+        });
+        if (config.timeout) {
+          const timeout = parseInt(config.timeout, 10);
+          if (isNaN(timeout)) {
+            reject(new AxiosError("error trying to parse `config.timeout` to int", AxiosError.ERR_BAD_OPTION_VALUE, config, req));
+            return;
+          }
+          req.setTimeout(timeout, function handleRequestTimeout() {
+            if (isDone)
+              return;
+            let timeoutErrorMessage = config.timeout ? "timeout of " + config.timeout + "ms exceeded" : "timeout exceeded";
+            const transitional = config.transitional || transitionalDefaults;
+            if (config.timeoutErrorMessage) {
+              timeoutErrorMessage = config.timeoutErrorMessage;
+            }
+            reject(new AxiosError(timeoutErrorMessage, transitional.clarifyTimeoutError ? AxiosError.ETIMEDOUT : AxiosError.ECONNABORTED, config, req));
+            abort();
+          });
+        }
+        if (utils.isStream(data)) {
+          let ended = false;
+          let errored = false;
+          data.on("end", () => {
+            ended = true;
+          });
+          data.once("error", (err) => {
+            errored = true;
+            req.destroy(err);
+          });
+          data.on("close", () => {
+            if (!ended && !errored) {
+              abort(new CanceledError("Request stream has been aborted", config, req));
+            }
+          });
+          data.pipe(req);
+        } else {
+          req.end(data);
+        }
+      });
+    };
+    var cookies = platform.isStandardBrowserEnv ? function standardBrowserEnv() {
+      return {
+        write: function write2(name, value, expires, path, domain, secure) {
+          const cookie = [];
+          cookie.push(name + "=" + encodeURIComponent(value));
+          if (utils.isNumber(expires)) {
+            cookie.push("expires=" + new Date(expires).toGMTString());
+          }
+          if (utils.isString(path)) {
+            cookie.push("path=" + path);
+          }
+          if (utils.isString(domain)) {
+            cookie.push("domain=" + domain);
+          }
+          if (secure === true) {
+            cookie.push("secure");
+          }
+          document.cookie = cookie.join("; ");
+        },
+        read: function read2(name) {
+          const match = document.cookie.match(new RegExp("(^|;\\s*)(" + name + ")=([^;]*)"));
+          return match ? decodeURIComponent(match[3]) : null;
+        },
+        remove: function remove2(name) {
+          this.write(name, "", Date.now() - 864e5);
+        }
+      };
+    }() : function nonStandardBrowserEnv() {
+      return {
+        write: function write2() {
+        },
+        read: function read2() {
+          return null;
+        },
+        remove: function remove2() {
+        }
+      };
+    }();
+    var isURLSameOrigin = platform.isStandardBrowserEnv ? function standardBrowserEnv() {
+      const msie = /(msie|trident)/i.test(navigator.userAgent);
+      const urlParsingNode = document.createElement("a");
+      let originURL;
+      function resolveURL(url2) {
+        let href = url2;
+        if (msie) {
+          urlParsingNode.setAttribute("href", href);
+          href = urlParsingNode.href;
+        }
+        urlParsingNode.setAttribute("href", href);
+        return {
+          href: urlParsingNode.href,
+          protocol: urlParsingNode.protocol ? urlParsingNode.protocol.replace(/:$/, "") : "",
+          host: urlParsingNode.host,
+          search: urlParsingNode.search ? urlParsingNode.search.replace(/^\?/, "") : "",
+          hash: urlParsingNode.hash ? urlParsingNode.hash.replace(/^#/, "") : "",
+          hostname: urlParsingNode.hostname,
+          port: urlParsingNode.port,
+          pathname: urlParsingNode.pathname.charAt(0) === "/" ? urlParsingNode.pathname : "/" + urlParsingNode.pathname
+        };
+      }
+      originURL = resolveURL(window.location.href);
+      return function isURLSameOrigin2(requestURL) {
+        const parsed = utils.isString(requestURL) ? resolveURL(requestURL) : requestURL;
+        return parsed.protocol === originURL.protocol && parsed.host === originURL.host;
+      };
+    }() : function nonStandardBrowserEnv() {
+      return function isURLSameOrigin2() {
+        return true;
+      };
+    }();
+    function progressEventReducer(listener, isDownloadStream) {
+      let bytesNotified = 0;
+      const _speedometer = speedometer(50, 250);
+      return (e2) => {
+        const loaded = e2.loaded;
+        const total = e2.lengthComputable ? e2.total : void 0;
+        const progressBytes = loaded - bytesNotified;
+        const rate = _speedometer(progressBytes);
+        const inRange = loaded <= total;
+        bytesNotified = loaded;
+        const data = {
+          loaded,
+          total,
+          progress: total ? loaded / total : void 0,
+          bytes: progressBytes,
+          rate: rate ? rate : void 0,
+          estimated: rate && total && inRange ? (total - loaded) / rate : void 0,
+          event: e2
+        };
+        data[isDownloadStream ? "download" : "upload"] = true;
+        listener(data);
+      };
+    }
+    var isXHRAdapterSupported = typeof XMLHttpRequest !== "undefined";
+    var xhrAdapter = isXHRAdapterSupported && function(config) {
+      return new Promise(function dispatchXhrRequest(resolve, reject) {
+        let requestData = config.data;
+        const requestHeaders = AxiosHeaders$1.from(config.headers).normalize();
+        const responseType = config.responseType;
+        let onCanceled;
+        function done() {
+          if (config.cancelToken) {
+            config.cancelToken.unsubscribe(onCanceled);
+          }
+          if (config.signal) {
+            config.signal.removeEventListener("abort", onCanceled);
+          }
+        }
+        if (utils.isFormData(requestData)) {
+          if (platform.isStandardBrowserEnv || platform.isStandardBrowserWebWorkerEnv) {
+            requestHeaders.setContentType(false);
+          } else {
+            requestHeaders.setContentType("multipart/form-data;", false);
+          }
+        }
+        let request = new XMLHttpRequest();
+        if (config.auth) {
+          const username = config.auth.username || "";
+          const password = config.auth.password ? unescape(encodeURIComponent(config.auth.password)) : "";
+          requestHeaders.set("Authorization", "Basic " + btoa(username + ":" + password));
+        }
+        const fullPath = buildFullPath(config.baseURL, config.url);
+        request.open(config.method.toUpperCase(), buildURL(fullPath, config.params, config.paramsSerializer), true);
+        request.timeout = config.timeout;
+        function onloadend() {
+          if (!request) {
+            return;
+          }
+          const responseHeaders = AxiosHeaders$1.from("getAllResponseHeaders" in request && request.getAllResponseHeaders());
+          const responseData = !responseType || responseType === "text" || responseType === "json" ? request.responseText : request.response;
+          const response = {
+            data: responseData,
+            status: request.status,
+            statusText: request.statusText,
+            headers: responseHeaders,
+            config,
+            request
+          };
+          settle(function _resolve(value) {
+            resolve(value);
+            done();
+          }, function _reject(err) {
+            reject(err);
+            done();
+          }, response);
+          request = null;
+        }
+        if ("onloadend" in request) {
+          request.onloadend = onloadend;
+        } else {
+          request.onreadystatechange = function handleLoad() {
+            if (!request || request.readyState !== 4) {
+              return;
+            }
+            if (request.status === 0 && !(request.responseURL && request.responseURL.indexOf("file:") === 0)) {
+              return;
+            }
+            setTimeout(onloadend);
+          };
+        }
+        request.onabort = function handleAbort() {
+          if (!request) {
+            return;
+          }
+          reject(new AxiosError("Request aborted", AxiosError.ECONNABORTED, config, request));
+          request = null;
+        };
+        request.onerror = function handleError() {
+          reject(new AxiosError("Network Error", AxiosError.ERR_NETWORK, config, request));
+          request = null;
+        };
+        request.ontimeout = function handleTimeout() {
+          let timeoutErrorMessage = config.timeout ? "timeout of " + config.timeout + "ms exceeded" : "timeout exceeded";
+          const transitional = config.transitional || transitionalDefaults;
+          if (config.timeoutErrorMessage) {
+            timeoutErrorMessage = config.timeoutErrorMessage;
+          }
+          reject(new AxiosError(timeoutErrorMessage, transitional.clarifyTimeoutError ? AxiosError.ETIMEDOUT : AxiosError.ECONNABORTED, config, request));
+          request = null;
+        };
+        if (platform.isStandardBrowserEnv) {
+          const xsrfValue = (config.withCredentials || isURLSameOrigin(fullPath)) && config.xsrfCookieName && cookies.read(config.xsrfCookieName);
+          if (xsrfValue) {
+            requestHeaders.set(config.xsrfHeaderName, xsrfValue);
+          }
+        }
+        requestData === void 0 && requestHeaders.setContentType(null);
+        if ("setRequestHeader" in request) {
+          utils.forEach(requestHeaders.toJSON(), function setRequestHeader(val2, key2) {
+            request.setRequestHeader(key2, val2);
+          });
+        }
+        if (!utils.isUndefined(config.withCredentials)) {
+          request.withCredentials = !!config.withCredentials;
+        }
+        if (responseType && responseType !== "json") {
+          request.responseType = config.responseType;
+        }
+        if (typeof config.onDownloadProgress === "function") {
+          request.addEventListener("progress", progressEventReducer(config.onDownloadProgress, true));
+        }
+        if (typeof config.onUploadProgress === "function" && request.upload) {
+          request.upload.addEventListener("progress", progressEventReducer(config.onUploadProgress));
+        }
+        if (config.cancelToken || config.signal) {
+          onCanceled = (cancel) => {
+            if (!request) {
+              return;
+            }
+            reject(!cancel || cancel.type ? new CanceledError(null, config, request) : cancel);
+            request.abort();
+            request = null;
+          };
+          config.cancelToken && config.cancelToken.subscribe(onCanceled);
+          if (config.signal) {
+            config.signal.aborted ? onCanceled() : config.signal.addEventListener("abort", onCanceled);
+          }
+        }
+        const protocol = parseProtocol(fullPath);
+        if (protocol && platform.protocols.indexOf(protocol) === -1) {
+          reject(new AxiosError("Unsupported protocol " + protocol + ":", AxiosError.ERR_BAD_REQUEST, config));
+          return;
+        }
+        request.send(requestData || null);
+      });
+    };
+    var knownAdapters = {
+      http: httpAdapter,
+      xhr: xhrAdapter
+    };
+    utils.forEach(knownAdapters, (fn, value) => {
+      if (fn) {
+        try {
+          Object.defineProperty(fn, "name", { value });
+        } catch (e2) {
+        }
+        Object.defineProperty(fn, "adapterName", { value });
+      }
+    });
+    var adapters = {
+      getAdapter: (adapters2) => {
+        adapters2 = utils.isArray(adapters2) ? adapters2 : [adapters2];
+        const { length } = adapters2;
+        let nameOrAdapter;
+        let adapter2;
+        for (let i2 = 0; i2 < length; i2++) {
+          nameOrAdapter = adapters2[i2];
+          if (adapter2 = utils.isString(nameOrAdapter) ? knownAdapters[nameOrAdapter.toLowerCase()] : nameOrAdapter) {
+            break;
+          }
+        }
+        if (!adapter2) {
+          if (adapter2 === false) {
+            throw new AxiosError(`Adapter ${nameOrAdapter} is not supported by the environment`, "ERR_NOT_SUPPORT");
+          }
+          throw new Error(utils.hasOwnProp(knownAdapters, nameOrAdapter) ? `Adapter '${nameOrAdapter}' is not available in the build` : `Unknown adapter '${nameOrAdapter}'`);
+        }
+        if (!utils.isFunction(adapter2)) {
+          throw new TypeError("adapter is not a function");
+        }
+        return adapter2;
+      },
+      adapters: knownAdapters
+    };
     function throwIfCancellationRequested(config) {
       if (config.cancelToken) {
         config.cancelToken.throwIfRequested();
       }
+      if (config.signal && config.signal.aborted) {
+        throw new CanceledError(null, config);
+      }
     }
-    module2.exports = function dispatchRequest(config) {
+    function dispatchRequest(config) {
       throwIfCancellationRequested(config);
-      config.headers = config.headers || {};
-      config.data = transformData.call(config, config.data, config.headers, config.transformRequest);
-      config.headers = utils.merge(config.headers.common || {}, config.headers[config.method] || {}, config.headers);
-      utils.forEach(["delete", "get", "head", "post", "put", "patch", "common"], function cleanHeaderConfig(method) {
-        delete config.headers[method];
-      });
-      var adapter2 = config.adapter || defaults.adapter;
+      config.headers = AxiosHeaders$1.from(config.headers);
+      config.data = transformData.call(config, config.transformRequest);
+      if (["post", "put", "patch"].indexOf(config.method) !== -1) {
+        config.headers.setContentType("application/x-www-form-urlencoded", false);
+      }
+      const adapter2 = adapters.getAdapter(config.adapter || defaults$1.adapter);
       return adapter2(config).then(function onAdapterResolution(response) {
         throwIfCancellationRequested(config);
-        response.data = transformData.call(config, response.data, response.headers, config.transformResponse);
+        response.data = transformData.call(config, config.transformResponse, response);
+        response.headers = AxiosHeaders$1.from(response.headers);
         return response;
       }, function onAdapterRejection(reason) {
         if (!isCancel(reason)) {
           throwIfCancellationRequested(config);
           if (reason && reason.response) {
-            reason.response.data = transformData.call(config, reason.response.data, reason.response.headers, config.transformResponse);
+            reason.response.data = transformData.call(config, config.transformResponse, reason.response);
+            reason.response.headers = AxiosHeaders$1.from(reason.response.headers);
           }
         }
         return Promise.reject(reason);
       });
-    };
-  }
-});
-
-// node_modules/axios/lib/core/mergeConfig.js
-var require_mergeConfig = __commonJS({
-  "node_modules/axios/lib/core/mergeConfig.js"(exports, module2) {
-    "use strict";
-    var utils = require_utils2();
-    module2.exports = function mergeConfig(config1, config2) {
+    }
+    var headersToObject = (thing) => thing instanceof AxiosHeaders$1 ? thing.toJSON() : thing;
+    function mergeConfig(config1, config2) {
       config2 = config2 || {};
-      var config = {};
-      var valueFromConfig2Keys = ["url", "method", "data"];
-      var mergeDeepPropertiesKeys = ["headers", "auth", "proxy", "params"];
-      var defaultToConfig2Keys = [
-        "baseURL",
-        "transformRequest",
-        "transformResponse",
-        "paramsSerializer",
-        "timeout",
-        "timeoutMessage",
-        "withCredentials",
-        "adapter",
-        "responseType",
-        "xsrfCookieName",
-        "xsrfHeaderName",
-        "onUploadProgress",
-        "onDownloadProgress",
-        "decompress",
-        "maxContentLength",
-        "maxBodyLength",
-        "maxRedirects",
-        "transport",
-        "httpAgent",
-        "httpsAgent",
-        "cancelToken",
-        "socketPath",
-        "responseEncoding"
-      ];
-      var directMergeKeys = ["validateStatus"];
-      function getMergedValue(target, source) {
+      const config = {};
+      function getMergedValue(target, source, caseless) {
         if (utils.isPlainObject(target) && utils.isPlainObject(source)) {
-          return utils.merge(target, source);
+          return utils.merge.call({ caseless }, target, source);
         } else if (utils.isPlainObject(source)) {
           return utils.merge({}, source);
         } else if (utils.isArray(source)) {
@@ -3861,342 +15309,427 @@ var require_mergeConfig = __commonJS({
         }
         return source;
       }
-      function mergeDeepProperties(prop2) {
-        if (!utils.isUndefined(config2[prop2])) {
-          config[prop2] = getMergedValue(config1[prop2], config2[prop2]);
-        } else if (!utils.isUndefined(config1[prop2])) {
-          config[prop2] = getMergedValue(void 0, config1[prop2]);
+      function mergeDeepProperties(a, b, caseless) {
+        if (!utils.isUndefined(b)) {
+          return getMergedValue(a, b, caseless);
+        } else if (!utils.isUndefined(a)) {
+          return getMergedValue(void 0, a, caseless);
         }
       }
-      utils.forEach(valueFromConfig2Keys, function valueFromConfig2(prop2) {
-        if (!utils.isUndefined(config2[prop2])) {
-          config[prop2] = getMergedValue(void 0, config2[prop2]);
+      function valueFromConfig2(a, b) {
+        if (!utils.isUndefined(b)) {
+          return getMergedValue(void 0, b);
         }
-      });
-      utils.forEach(mergeDeepPropertiesKeys, mergeDeepProperties);
-      utils.forEach(defaultToConfig2Keys, function defaultToConfig2(prop2) {
-        if (!utils.isUndefined(config2[prop2])) {
-          config[prop2] = getMergedValue(void 0, config2[prop2]);
-        } else if (!utils.isUndefined(config1[prop2])) {
-          config[prop2] = getMergedValue(void 0, config1[prop2]);
+      }
+      function defaultToConfig2(a, b) {
+        if (!utils.isUndefined(b)) {
+          return getMergedValue(void 0, b);
+        } else if (!utils.isUndefined(a)) {
+          return getMergedValue(void 0, a);
         }
-      });
-      utils.forEach(directMergeKeys, function merge(prop2) {
+      }
+      function mergeDirectKeys(a, b, prop2) {
         if (prop2 in config2) {
-          config[prop2] = getMergedValue(config1[prop2], config2[prop2]);
+          return getMergedValue(a, b);
         } else if (prop2 in config1) {
-          config[prop2] = getMergedValue(void 0, config1[prop2]);
+          return getMergedValue(void 0, a);
         }
+      }
+      const mergeMap = {
+        url: valueFromConfig2,
+        method: valueFromConfig2,
+        data: valueFromConfig2,
+        baseURL: defaultToConfig2,
+        transformRequest: defaultToConfig2,
+        transformResponse: defaultToConfig2,
+        paramsSerializer: defaultToConfig2,
+        timeout: defaultToConfig2,
+        timeoutMessage: defaultToConfig2,
+        withCredentials: defaultToConfig2,
+        adapter: defaultToConfig2,
+        responseType: defaultToConfig2,
+        xsrfCookieName: defaultToConfig2,
+        xsrfHeaderName: defaultToConfig2,
+        onUploadProgress: defaultToConfig2,
+        onDownloadProgress: defaultToConfig2,
+        decompress: defaultToConfig2,
+        maxContentLength: defaultToConfig2,
+        maxBodyLength: defaultToConfig2,
+        beforeRedirect: defaultToConfig2,
+        transport: defaultToConfig2,
+        httpAgent: defaultToConfig2,
+        httpsAgent: defaultToConfig2,
+        cancelToken: defaultToConfig2,
+        socketPath: defaultToConfig2,
+        responseEncoding: defaultToConfig2,
+        validateStatus: mergeDirectKeys,
+        headers: (a, b) => mergeDeepProperties(headersToObject(a), headersToObject(b), true)
+      };
+      utils.forEach(Object.keys(Object.assign({}, config1, config2)), function computeConfigValue(prop2) {
+        const merge2 = mergeMap[prop2] || mergeDeepProperties;
+        const configValue = merge2(config1[prop2], config2[prop2], prop2);
+        utils.isUndefined(configValue) && merge2 !== mergeDirectKeys || (config[prop2] = configValue);
       });
-      var axiosKeys = valueFromConfig2Keys.concat(mergeDeepPropertiesKeys).concat(defaultToConfig2Keys).concat(directMergeKeys);
-      var otherKeys = Object.keys(config1).concat(Object.keys(config2)).filter(function filterAxiosKeys(key2) {
-        return axiosKeys.indexOf(key2) === -1;
-      });
-      utils.forEach(otherKeys, mergeDeepProperties);
       return config;
-    };
-  }
-});
-
-// node_modules/axios/lib/helpers/validator.js
-var require_validator = __commonJS({
-  "node_modules/axios/lib/helpers/validator.js"(exports, module2) {
-    "use strict";
-    var pkg = require_package();
-    var validators = {};
-    ["object", "boolean", "number", "function", "string", "symbol"].forEach(function(type, i2) {
-      validators[type] = function validator(thing) {
+    }
+    var validators$1 = {};
+    ["object", "boolean", "number", "function", "string", "symbol"].forEach((type, i2) => {
+      validators$1[type] = function validator2(thing) {
         return typeof thing === type || "a" + (i2 < 1 ? "n " : " ") + type;
       };
     });
     var deprecatedWarnings = {};
-    var currentVerArr = pkg.version.split(".");
-    function isOlderVersion(version, thanVersion) {
-      var pkgVersionArr = thanVersion ? thanVersion.split(".") : currentVerArr;
-      var destVer = version.split(".");
-      for (var i2 = 0; i2 < 3; i2++) {
-        if (pkgVersionArr[i2] > destVer[i2]) {
-          return true;
-        } else if (pkgVersionArr[i2] < destVer[i2]) {
-          return false;
-        }
-      }
-      return false;
-    }
-    validators.transitional = function transitional(validator, version, message) {
-      var isDeprecated = version && isOlderVersion(version);
+    validators$1.transitional = function transitional(validator2, version, message) {
       function formatMessage(opt, desc) {
-        return "[Axios v" + pkg.version + "] Transitional option '" + opt + "'" + desc + (message ? ". " + message : "");
+        return "[Axios v" + VERSION + "] Transitional option '" + opt + "'" + desc + (message ? ". " + message : "");
       }
-      return function(value, opt, opts) {
-        if (validator === false) {
-          throw new Error(formatMessage(opt, " has been removed in " + version));
+      return (value, opt, opts) => {
+        if (validator2 === false) {
+          throw new AxiosError(formatMessage(opt, " has been removed" + (version ? " in " + version : "")), AxiosError.ERR_DEPRECATED);
         }
-        if (isDeprecated && !deprecatedWarnings[opt]) {
+        if (version && !deprecatedWarnings[opt]) {
           deprecatedWarnings[opt] = true;
           console.warn(formatMessage(opt, " has been deprecated since v" + version + " and will be removed in the near future"));
         }
-        return validator ? validator(value, opt, opts) : true;
+        return validator2 ? validator2(value, opt, opts) : true;
       };
     };
     function assertOptions(options, schema, allowUnknown) {
       if (typeof options !== "object") {
-        throw new TypeError("options must be an object");
+        throw new AxiosError("options must be an object", AxiosError.ERR_BAD_OPTION_VALUE);
       }
-      var keys2 = Object.keys(options);
-      var i2 = keys2.length;
+      const keys2 = Object.keys(options);
+      let i2 = keys2.length;
       while (i2-- > 0) {
-        var opt = keys2[i2];
-        var validator = schema[opt];
-        if (validator) {
-          var value = options[opt];
-          var result = value === void 0 || validator(value, opt, options);
+        const opt = keys2[i2];
+        const validator2 = schema[opt];
+        if (validator2) {
+          const value = options[opt];
+          const result = value === void 0 || validator2(value, opt, options);
           if (result !== true) {
-            throw new TypeError("option " + opt + " must be " + result);
+            throw new AxiosError("option " + opt + " must be " + result, AxiosError.ERR_BAD_OPTION_VALUE);
           }
           continue;
         }
         if (allowUnknown !== true) {
-          throw Error("Unknown option " + opt);
+          throw new AxiosError("Unknown option " + opt, AxiosError.ERR_BAD_OPTION);
         }
       }
     }
-    module2.exports = {
-      isOlderVersion,
+    var validator = {
       assertOptions,
-      validators
+      validators: validators$1
     };
-  }
-});
-
-// node_modules/axios/lib/core/Axios.js
-var require_Axios = __commonJS({
-  "node_modules/axios/lib/core/Axios.js"(exports, module2) {
-    "use strict";
-    var utils = require_utils2();
-    var buildURL = require_buildURL();
-    var InterceptorManager = require_InterceptorManager();
-    var dispatchRequest = require_dispatchRequest();
-    var mergeConfig = require_mergeConfig();
-    var validator = require_validator();
     var validators = validator.validators;
-    function Axios(instanceConfig) {
-      this.defaults = instanceConfig;
-      this.interceptors = {
-        request: new InterceptorManager(),
-        response: new InterceptorManager()
-      };
-    }
-    Axios.prototype.request = function request(config) {
-      if (typeof config === "string") {
-        config = arguments[1] || {};
-        config.url = arguments[0];
-      } else {
-        config = config || {};
+    var Axios = class {
+      constructor(instanceConfig) {
+        this.defaults = instanceConfig;
+        this.interceptors = {
+          request: new InterceptorManager$1(),
+          response: new InterceptorManager$1()
+        };
       }
-      config = mergeConfig(this.defaults, config);
-      if (config.method) {
-        config.method = config.method.toLowerCase();
-      } else if (this.defaults.method) {
-        config.method = this.defaults.method.toLowerCase();
-      } else {
-        config.method = "get";
-      }
-      var transitional = config.transitional;
-      if (transitional !== void 0) {
-        validator.assertOptions(transitional, {
-          silentJSONParsing: validators.transitional(validators.boolean, "1.0.0"),
-          forcedJSONParsing: validators.transitional(validators.boolean, "1.0.0"),
-          clarifyTimeoutError: validators.transitional(validators.boolean, "1.0.0")
-        }, false);
-      }
-      var requestInterceptorChain = [];
-      var synchronousRequestInterceptors = true;
-      this.interceptors.request.forEach(function unshiftRequestInterceptors(interceptor) {
-        if (typeof interceptor.runWhen === "function" && interceptor.runWhen(config) === false) {
-          return;
+      request(configOrUrl, config) {
+        if (typeof configOrUrl === "string") {
+          config = config || {};
+          config.url = configOrUrl;
+        } else {
+          config = configOrUrl || {};
         }
-        synchronousRequestInterceptors = synchronousRequestInterceptors && interceptor.synchronous;
-        requestInterceptorChain.unshift(interceptor.fulfilled, interceptor.rejected);
-      });
-      var responseInterceptorChain = [];
-      this.interceptors.response.forEach(function pushResponseInterceptors(interceptor) {
-        responseInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);
-      });
-      var promise;
-      if (!synchronousRequestInterceptors) {
-        var chain = [dispatchRequest, void 0];
-        Array.prototype.unshift.apply(chain, requestInterceptorChain);
-        chain = chain.concat(responseInterceptorChain);
-        promise = Promise.resolve(config);
-        while (chain.length) {
-          promise = promise.then(chain.shift(), chain.shift());
+        config = mergeConfig(this.defaults, config);
+        const { transitional, paramsSerializer, headers } = config;
+        if (transitional !== void 0) {
+          validator.assertOptions(transitional, {
+            silentJSONParsing: validators.transitional(validators.boolean),
+            forcedJSONParsing: validators.transitional(validators.boolean),
+            clarifyTimeoutError: validators.transitional(validators.boolean)
+          }, false);
+        }
+        if (paramsSerializer != null) {
+          if (utils.isFunction(paramsSerializer)) {
+            config.paramsSerializer = {
+              serialize: paramsSerializer
+            };
+          } else {
+            validator.assertOptions(paramsSerializer, {
+              encode: validators.function,
+              serialize: validators.function
+            }, true);
+          }
+        }
+        config.method = (config.method || this.defaults.method || "get").toLowerCase();
+        let contextHeaders;
+        contextHeaders = headers && utils.merge(headers.common, headers[config.method]);
+        contextHeaders && utils.forEach(["delete", "get", "head", "post", "put", "patch", "common"], (method) => {
+          delete headers[method];
+        });
+        config.headers = AxiosHeaders$1.concat(contextHeaders, headers);
+        const requestInterceptorChain = [];
+        let synchronousRequestInterceptors = true;
+        this.interceptors.request.forEach(function unshiftRequestInterceptors(interceptor) {
+          if (typeof interceptor.runWhen === "function" && interceptor.runWhen(config) === false) {
+            return;
+          }
+          synchronousRequestInterceptors = synchronousRequestInterceptors && interceptor.synchronous;
+          requestInterceptorChain.unshift(interceptor.fulfilled, interceptor.rejected);
+        });
+        const responseInterceptorChain = [];
+        this.interceptors.response.forEach(function pushResponseInterceptors(interceptor) {
+          responseInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);
+        });
+        let promise;
+        let i2 = 0;
+        let len;
+        if (!synchronousRequestInterceptors) {
+          const chain = [dispatchRequest.bind(this), void 0];
+          chain.unshift.apply(chain, requestInterceptorChain);
+          chain.push.apply(chain, responseInterceptorChain);
+          len = chain.length;
+          promise = Promise.resolve(config);
+          while (i2 < len) {
+            promise = promise.then(chain[i2++], chain[i2++]);
+          }
+          return promise;
+        }
+        len = requestInterceptorChain.length;
+        let newConfig = config;
+        i2 = 0;
+        while (i2 < len) {
+          const onFulfilled = requestInterceptorChain[i2++];
+          const onRejected = requestInterceptorChain[i2++];
+          try {
+            newConfig = onFulfilled(newConfig);
+          } catch (error) {
+            onRejected.call(this, error);
+            break;
+          }
+        }
+        try {
+          promise = dispatchRequest.call(this, newConfig);
+        } catch (error) {
+          return Promise.reject(error);
+        }
+        i2 = 0;
+        len = responseInterceptorChain.length;
+        while (i2 < len) {
+          promise = promise.then(responseInterceptorChain[i2++], responseInterceptorChain[i2++]);
         }
         return promise;
       }
-      var newConfig = config;
-      while (requestInterceptorChain.length) {
-        var onFulfilled = requestInterceptorChain.shift();
-        var onRejected = requestInterceptorChain.shift();
-        try {
-          newConfig = onFulfilled(newConfig);
-        } catch (error) {
-          onRejected(error);
-          break;
-        }
+      getUri(config) {
+        config = mergeConfig(this.defaults, config);
+        const fullPath = buildFullPath(config.baseURL, config.url);
+        return buildURL(fullPath, config.params, config.paramsSerializer);
       }
-      try {
-        promise = dispatchRequest(newConfig);
-      } catch (error) {
-        return Promise.reject(error);
-      }
-      while (responseInterceptorChain.length) {
-        promise = promise.then(responseInterceptorChain.shift(), responseInterceptorChain.shift());
-      }
-      return promise;
-    };
-    Axios.prototype.getUri = function getUri(config) {
-      config = mergeConfig(this.defaults, config);
-      return buildURL(config.url, config.params, config.paramsSerializer).replace(/^\?/, "");
     };
     utils.forEach(["delete", "get", "head", "options"], function forEachMethodNoData(method) {
-      Axios.prototype[method] = function(url, config) {
+      Axios.prototype[method] = function(url2, config) {
         return this.request(mergeConfig(config || {}, {
           method,
-          url,
+          url: url2,
           data: (config || {}).data
         }));
       };
     });
     utils.forEach(["post", "put", "patch"], function forEachMethodWithData(method) {
-      Axios.prototype[method] = function(url, data, config) {
-        return this.request(mergeConfig(config || {}, {
-          method,
-          url,
-          data
-        }));
-      };
-    });
-    module2.exports = Axios;
-  }
-});
-
-// node_modules/axios/lib/cancel/Cancel.js
-var require_Cancel = __commonJS({
-  "node_modules/axios/lib/cancel/Cancel.js"(exports, module2) {
-    "use strict";
-    function Cancel(message) {
-      this.message = message;
-    }
-    Cancel.prototype.toString = function toString2() {
-      return "Cancel" + (this.message ? ": " + this.message : "");
-    };
-    Cancel.prototype.__CANCEL__ = true;
-    module2.exports = Cancel;
-  }
-});
-
-// node_modules/axios/lib/cancel/CancelToken.js
-var require_CancelToken = __commonJS({
-  "node_modules/axios/lib/cancel/CancelToken.js"(exports, module2) {
-    "use strict";
-    var Cancel = require_Cancel();
-    function CancelToken(executor) {
-      if (typeof executor !== "function") {
-        throw new TypeError("executor must be a function.");
+      function generateHTTPMethod(isForm) {
+        return function httpMethod(url2, data, config) {
+          return this.request(mergeConfig(config || {}, {
+            method,
+            headers: isForm ? {
+              "Content-Type": "multipart/form-data"
+            } : {},
+            url: url2,
+            data
+          }));
+        };
       }
-      var resolvePromise;
-      this.promise = new Promise(function promiseExecutor(resolve) {
-        resolvePromise = resolve;
-      });
-      var token = this;
-      executor(function cancel(message) {
-        if (token.reason) {
+      Axios.prototype[method] = generateHTTPMethod();
+      Axios.prototype[method + "Form"] = generateHTTPMethod(true);
+    });
+    var Axios$1 = Axios;
+    var CancelToken = class {
+      constructor(executor) {
+        if (typeof executor !== "function") {
+          throw new TypeError("executor must be a function.");
+        }
+        let resolvePromise;
+        this.promise = new Promise(function promiseExecutor(resolve) {
+          resolvePromise = resolve;
+        });
+        const token = this;
+        this.promise.then((cancel) => {
+          if (!token._listeners)
+            return;
+          let i2 = token._listeners.length;
+          while (i2-- > 0) {
+            token._listeners[i2](cancel);
+          }
+          token._listeners = null;
+        });
+        this.promise.then = (onfulfilled) => {
+          let _resolve;
+          const promise = new Promise((resolve) => {
+            token.subscribe(resolve);
+            _resolve = resolve;
+          }).then(onfulfilled);
+          promise.cancel = function reject() {
+            token.unsubscribe(_resolve);
+          };
+          return promise;
+        };
+        executor(function cancel(message, config, request) {
+          if (token.reason) {
+            return;
+          }
+          token.reason = new CanceledError(message, config, request);
+          resolvePromise(token.reason);
+        });
+      }
+      throwIfRequested() {
+        if (this.reason) {
+          throw this.reason;
+        }
+      }
+      subscribe(listener) {
+        if (this.reason) {
+          listener(this.reason);
           return;
         }
-        token.reason = new Cancel(message);
-        resolvePromise(token.reason);
-      });
-    }
-    CancelToken.prototype.throwIfRequested = function throwIfRequested() {
-      if (this.reason) {
-        throw this.reason;
+        if (this._listeners) {
+          this._listeners.push(listener);
+        } else {
+          this._listeners = [listener];
+        }
+      }
+      unsubscribe(listener) {
+        if (!this._listeners) {
+          return;
+        }
+        const index = this._listeners.indexOf(listener);
+        if (index !== -1) {
+          this._listeners.splice(index, 1);
+        }
+      }
+      static source() {
+        let cancel;
+        const token = new CancelToken(function executor(c) {
+          cancel = c;
+        });
+        return {
+          token,
+          cancel
+        };
       }
     };
-    CancelToken.source = function source() {
-      var cancel;
-      var token = new CancelToken(function executor(c) {
-        cancel = c;
-      });
-      return {
-        token,
-        cancel
-      };
-    };
-    module2.exports = CancelToken;
-  }
-});
-
-// node_modules/axios/lib/helpers/spread.js
-var require_spread = __commonJS({
-  "node_modules/axios/lib/helpers/spread.js"(exports, module2) {
-    "use strict";
-    module2.exports = function spread(callback) {
+    var CancelToken$1 = CancelToken;
+    function spread(callback) {
       return function wrap(arr) {
         return callback.apply(null, arr);
       };
+    }
+    function isAxiosError(payload) {
+      return utils.isObject(payload) && payload.isAxiosError === true;
+    }
+    var HttpStatusCode = {
+      Continue: 100,
+      SwitchingProtocols: 101,
+      Processing: 102,
+      EarlyHints: 103,
+      Ok: 200,
+      Created: 201,
+      Accepted: 202,
+      NonAuthoritativeInformation: 203,
+      NoContent: 204,
+      ResetContent: 205,
+      PartialContent: 206,
+      MultiStatus: 207,
+      AlreadyReported: 208,
+      ImUsed: 226,
+      MultipleChoices: 300,
+      MovedPermanently: 301,
+      Found: 302,
+      SeeOther: 303,
+      NotModified: 304,
+      UseProxy: 305,
+      Unused: 306,
+      TemporaryRedirect: 307,
+      PermanentRedirect: 308,
+      BadRequest: 400,
+      Unauthorized: 401,
+      PaymentRequired: 402,
+      Forbidden: 403,
+      NotFound: 404,
+      MethodNotAllowed: 405,
+      NotAcceptable: 406,
+      ProxyAuthenticationRequired: 407,
+      RequestTimeout: 408,
+      Conflict: 409,
+      Gone: 410,
+      LengthRequired: 411,
+      PreconditionFailed: 412,
+      PayloadTooLarge: 413,
+      UriTooLong: 414,
+      UnsupportedMediaType: 415,
+      RangeNotSatisfiable: 416,
+      ExpectationFailed: 417,
+      ImATeapot: 418,
+      MisdirectedRequest: 421,
+      UnprocessableEntity: 422,
+      Locked: 423,
+      FailedDependency: 424,
+      TooEarly: 425,
+      UpgradeRequired: 426,
+      PreconditionRequired: 428,
+      TooManyRequests: 429,
+      RequestHeaderFieldsTooLarge: 431,
+      UnavailableForLegalReasons: 451,
+      InternalServerError: 500,
+      NotImplemented: 501,
+      BadGateway: 502,
+      ServiceUnavailable: 503,
+      GatewayTimeout: 504,
+      HttpVersionNotSupported: 505,
+      VariantAlsoNegotiates: 506,
+      InsufficientStorage: 507,
+      LoopDetected: 508,
+      NotExtended: 510,
+      NetworkAuthenticationRequired: 511
     };
-  }
-});
-
-// node_modules/axios/lib/helpers/isAxiosError.js
-var require_isAxiosError = __commonJS({
-  "node_modules/axios/lib/helpers/isAxiosError.js"(exports, module2) {
-    "use strict";
-    module2.exports = function isAxiosError(payload) {
-      return typeof payload === "object" && payload.isAxiosError === true;
-    };
-  }
-});
-
-// node_modules/axios/lib/axios.js
-var require_axios = __commonJS({
-  "node_modules/axios/lib/axios.js"(exports, module2) {
-    "use strict";
-    var utils = require_utils2();
-    var bind = require_bind();
-    var Axios = require_Axios();
-    var mergeConfig = require_mergeConfig();
-    var defaults = require_defaults();
+    Object.entries(HttpStatusCode).forEach(([key2, value]) => {
+      HttpStatusCode[value] = key2;
+    });
+    var HttpStatusCode$1 = HttpStatusCode;
     function createInstance(defaultConfig) {
-      var context = new Axios(defaultConfig);
-      var instance = bind(Axios.prototype.request, context);
-      utils.extend(instance, Axios.prototype, context);
-      utils.extend(instance, context);
+      const context = new Axios$1(defaultConfig);
+      const instance = bind(Axios$1.prototype.request, context);
+      utils.extend(instance, Axios$1.prototype, context, { allOwnKeys: true });
+      utils.extend(instance, context, null, { allOwnKeys: true });
+      instance.create = function create3(instanceConfig) {
+        return createInstance(mergeConfig(defaultConfig, instanceConfig));
+      };
       return instance;
     }
-    var axios = createInstance(defaults);
-    axios.Axios = Axios;
-    axios.create = function create3(instanceConfig) {
-      return createInstance(mergeConfig(axios.defaults, instanceConfig));
-    };
-    axios.Cancel = require_Cancel();
-    axios.CancelToken = require_CancelToken();
-    axios.isCancel = require_isCancel();
+    var axios = createInstance(defaults$1);
+    axios.Axios = Axios$1;
+    axios.CanceledError = CanceledError;
+    axios.CancelToken = CancelToken$1;
+    axios.isCancel = isCancel;
+    axios.VERSION = VERSION;
+    axios.toFormData = toFormData2;
+    axios.AxiosError = AxiosError;
+    axios.Cancel = axios.CanceledError;
     axios.all = function all(promises) {
       return Promise.all(promises);
     };
-    axios.spread = require_spread();
-    axios.isAxiosError = require_isAxiosError();
+    axios.spread = spread;
+    axios.isAxiosError = isAxiosError;
+    axios.mergeConfig = mergeConfig;
+    axios.AxiosHeaders = AxiosHeaders$1;
+    axios.formToJSON = (thing) => formDataToJSON(utils.isHTMLForm(thing) ? new FormData(thing) : thing);
+    axios.HttpStatusCode = HttpStatusCode$1;
+    axios.default = axios;
     module2.exports = axios;
-    module2.exports.default = axios;
-  }
-});
-
-// node_modules/axios/index.js
-var require_axios2 = __commonJS({
-  "node_modules/axios/index.js"(exports, module2) {
-    module2.exports = require_axios();
   }
 });
 
@@ -4253,91 +15786,502 @@ var require_util = __commonJS({
         return "";
       }
     };
-    exports.buildOptions = function(options, defaultOptions, props) {
-      let newOptions = {};
-      if (!options) {
-        return defaultOptions;
-      }
-      for (let i2 = 0; i2 < props.length; i2++) {
-        if (options[props[i2]] !== void 0) {
-          newOptions[props[i2]] = options[props[i2]];
-        } else {
-          newOptions[props[i2]] = defaultOptions[props[i2]];
-        }
-      }
-      return newOptions;
-    };
-    exports.isTagNameInArrayMode = function(tagName15, arrayMode, parentTagName) {
-      if (arrayMode === false) {
-        return false;
-      } else if (arrayMode instanceof RegExp) {
-        return arrayMode.test(tagName15);
-      } else if (typeof arrayMode === "function") {
-        return !!arrayMode(tagName15, parentTagName);
-      }
-      return arrayMode === "strict";
-    };
     exports.isName = isName;
     exports.getAllMatches = getAllMatches;
     exports.nameRegexp = nameRegexp;
   }
 });
 
-// node_modules/fast-xml-parser/src/node2json.js
-var require_node2json = __commonJS({
-  "node_modules/fast-xml-parser/src/node2json.js"(exports) {
+// node_modules/fast-xml-parser/src/validator.js
+var require_validator = __commonJS({
+  "node_modules/fast-xml-parser/src/validator.js"(exports) {
     "use strict";
     var util = require_util();
-    var convertToJson = function(node, options, parentTagName) {
-      const jObj = {};
-      if (!options.alwaysCreateTextNode && (!node.child || util.isEmptyObject(node.child)) && (!node.attrsMap || util.isEmptyObject(node.attrsMap))) {
-        return util.isExist(node.val) ? node.val : "";
+    var defaultOptions = {
+      allowBooleanAttributes: false,
+      unpairedTags: []
+    };
+    exports.validate = function(xmlData, options) {
+      options = Object.assign({}, defaultOptions, options);
+      const tags = [];
+      let tagFound = false;
+      let reachedRoot = false;
+      if (xmlData[0] === "\uFEFF") {
+        xmlData = xmlData.substr(1);
       }
-      if (util.isExist(node.val) && !(typeof node.val === "string" && (node.val === "" || node.val === options.cdataPositionChar))) {
-        const asArray = util.isTagNameInArrayMode(node.tagname, options.arrayMode, parentTagName);
-        jObj[options.textNodeName] = asArray ? [node.val] : node.val;
-      }
-      util.merge(jObj, node.attrsMap, options.arrayMode);
-      const keys2 = Object.keys(node.child);
-      for (let index = 0; index < keys2.length; index++) {
-        const tagName15 = keys2[index];
-        if (node.child[tagName15] && node.child[tagName15].length > 1) {
-          jObj[tagName15] = [];
-          for (let tag in node.child[tagName15]) {
-            if (node.child[tagName15].hasOwnProperty(tag)) {
-              jObj[tagName15].push(convertToJson(node.child[tagName15][tag], options, tagName15));
+      for (let i2 = 0; i2 < xmlData.length; i2++) {
+        if (xmlData[i2] === "<" && xmlData[i2 + 1] === "?") {
+          i2 += 2;
+          i2 = readPI(xmlData, i2);
+          if (i2.err)
+            return i2;
+        } else if (xmlData[i2] === "<") {
+          let tagStartPos = i2;
+          i2++;
+          if (xmlData[i2] === "!") {
+            i2 = readCommentAndCDATA(xmlData, i2);
+            continue;
+          } else {
+            let closingTag = false;
+            if (xmlData[i2] === "/") {
+              closingTag = true;
+              i2++;
+            }
+            let tagName15 = "";
+            for (; i2 < xmlData.length && xmlData[i2] !== ">" && xmlData[i2] !== " " && xmlData[i2] !== "	" && xmlData[i2] !== "\n" && xmlData[i2] !== "\r"; i2++) {
+              tagName15 += xmlData[i2];
+            }
+            tagName15 = tagName15.trim();
+            if (tagName15[tagName15.length - 1] === "/") {
+              tagName15 = tagName15.substring(0, tagName15.length - 1);
+              i2--;
+            }
+            if (!validateTagName(tagName15)) {
+              let msg;
+              if (tagName15.trim().length === 0) {
+                msg = "Invalid space after '<'.";
+              } else {
+                msg = "Tag '" + tagName15 + "' is an invalid name.";
+              }
+              return getErrorObject("InvalidTag", msg, getLineNumberForPosition(xmlData, i2));
+            }
+            const result = readAttributeStr(xmlData, i2);
+            if (result === false) {
+              return getErrorObject("InvalidAttr", "Attributes for '" + tagName15 + "' have open quote.", getLineNumberForPosition(xmlData, i2));
+            }
+            let attrStr = result.value;
+            i2 = result.index;
+            if (attrStr[attrStr.length - 1] === "/") {
+              const attrStrStart = i2 - attrStr.length;
+              attrStr = attrStr.substring(0, attrStr.length - 1);
+              const isValid = validateAttributeString(attrStr, options);
+              if (isValid === true) {
+                tagFound = true;
+              } else {
+                return getErrorObject(isValid.err.code, isValid.err.msg, getLineNumberForPosition(xmlData, attrStrStart + isValid.err.line));
+              }
+            } else if (closingTag) {
+              if (!result.tagClosed) {
+                return getErrorObject("InvalidTag", "Closing tag '" + tagName15 + "' doesn't have proper closing.", getLineNumberForPosition(xmlData, i2));
+              } else if (attrStr.trim().length > 0) {
+                return getErrorObject("InvalidTag", "Closing tag '" + tagName15 + "' can't have attributes or invalid starting.", getLineNumberForPosition(xmlData, tagStartPos));
+              } else {
+                const otg = tags.pop();
+                if (tagName15 !== otg.tagName) {
+                  let openPos = getLineNumberForPosition(xmlData, otg.tagStartPos);
+                  return getErrorObject("InvalidTag", "Expected closing tag '" + otg.tagName + "' (opened in line " + openPos.line + ", col " + openPos.col + ") instead of closing tag '" + tagName15 + "'.", getLineNumberForPosition(xmlData, tagStartPos));
+                }
+                if (tags.length == 0) {
+                  reachedRoot = true;
+                }
+              }
+            } else {
+              const isValid = validateAttributeString(attrStr, options);
+              if (isValid !== true) {
+                return getErrorObject(isValid.err.code, isValid.err.msg, getLineNumberForPosition(xmlData, i2 - attrStr.length + isValid.err.line));
+              }
+              if (reachedRoot === true) {
+                return getErrorObject("InvalidXml", "Multiple possible root nodes found.", getLineNumberForPosition(xmlData, i2));
+              } else if (options.unpairedTags.indexOf(tagName15) !== -1) {
+              } else {
+                tags.push({ tagName: tagName15, tagStartPos });
+              }
+              tagFound = true;
+            }
+            for (i2++; i2 < xmlData.length; i2++) {
+              if (xmlData[i2] === "<") {
+                if (xmlData[i2 + 1] === "!") {
+                  i2++;
+                  i2 = readCommentAndCDATA(xmlData, i2);
+                  continue;
+                } else if (xmlData[i2 + 1] === "?") {
+                  i2 = readPI(xmlData, ++i2);
+                  if (i2.err)
+                    return i2;
+                } else {
+                  break;
+                }
+              } else if (xmlData[i2] === "&") {
+                const afterAmp = validateAmpersand(xmlData, i2);
+                if (afterAmp == -1)
+                  return getErrorObject("InvalidChar", "char '&' is not expected.", getLineNumberForPosition(xmlData, i2));
+                i2 = afterAmp;
+              } else {
+                if (reachedRoot === true && !isWhiteSpace(xmlData[i2])) {
+                  return getErrorObject("InvalidXml", "Extra text at the end", getLineNumberForPosition(xmlData, i2));
+                }
+              }
+            }
+            if (xmlData[i2] === "<") {
+              i2--;
             }
           }
         } else {
-          const result = convertToJson(node.child[tagName15][0], options, tagName15);
-          const asArray = options.arrayMode === true && typeof result === "object" || util.isTagNameInArrayMode(tagName15, options.arrayMode, parentTagName);
-          jObj[tagName15] = asArray ? [result] : result;
+          if (isWhiteSpace(xmlData[i2])) {
+            continue;
+          }
+          return getErrorObject("InvalidChar", "char '" + xmlData[i2] + "' is not expected.", getLineNumberForPosition(xmlData, i2));
         }
       }
-      return jObj;
+      if (!tagFound) {
+        return getErrorObject("InvalidXml", "Start tag expected.", 1);
+      } else if (tags.length == 1) {
+        return getErrorObject("InvalidTag", "Unclosed tag '" + tags[0].tagName + "'.", getLineNumberForPosition(xmlData, tags[0].tagStartPos));
+      } else if (tags.length > 0) {
+        return getErrorObject("InvalidXml", "Invalid '" + JSON.stringify(tags.map((t2) => t2.tagName), null, 4).replace(/\r?\n/g, "") + "' found.", { line: 1, col: 1 });
+      }
+      return true;
     };
-    exports.convertToJson = convertToJson;
+    function isWhiteSpace(char) {
+      return char === " " || char === "	" || char === "\n" || char === "\r";
+    }
+    function readPI(xmlData, i2) {
+      const start = i2;
+      for (; i2 < xmlData.length; i2++) {
+        if (xmlData[i2] == "?" || xmlData[i2] == " ") {
+          const tagname = xmlData.substr(start, i2 - start);
+          if (i2 > 5 && tagname === "xml") {
+            return getErrorObject("InvalidXml", "XML declaration allowed only at the start of the document.", getLineNumberForPosition(xmlData, i2));
+          } else if (xmlData[i2] == "?" && xmlData[i2 + 1] == ">") {
+            i2++;
+            break;
+          } else {
+            continue;
+          }
+        }
+      }
+      return i2;
+    }
+    function readCommentAndCDATA(xmlData, i2) {
+      if (xmlData.length > i2 + 5 && xmlData[i2 + 1] === "-" && xmlData[i2 + 2] === "-") {
+        for (i2 += 3; i2 < xmlData.length; i2++) {
+          if (xmlData[i2] === "-" && xmlData[i2 + 1] === "-" && xmlData[i2 + 2] === ">") {
+            i2 += 2;
+            break;
+          }
+        }
+      } else if (xmlData.length > i2 + 8 && xmlData[i2 + 1] === "D" && xmlData[i2 + 2] === "O" && xmlData[i2 + 3] === "C" && xmlData[i2 + 4] === "T" && xmlData[i2 + 5] === "Y" && xmlData[i2 + 6] === "P" && xmlData[i2 + 7] === "E") {
+        let angleBracketsCount = 1;
+        for (i2 += 8; i2 < xmlData.length; i2++) {
+          if (xmlData[i2] === "<") {
+            angleBracketsCount++;
+          } else if (xmlData[i2] === ">") {
+            angleBracketsCount--;
+            if (angleBracketsCount === 0) {
+              break;
+            }
+          }
+        }
+      } else if (xmlData.length > i2 + 9 && xmlData[i2 + 1] === "[" && xmlData[i2 + 2] === "C" && xmlData[i2 + 3] === "D" && xmlData[i2 + 4] === "A" && xmlData[i2 + 5] === "T" && xmlData[i2 + 6] === "A" && xmlData[i2 + 7] === "[") {
+        for (i2 += 8; i2 < xmlData.length; i2++) {
+          if (xmlData[i2] === "]" && xmlData[i2 + 1] === "]" && xmlData[i2 + 2] === ">") {
+            i2 += 2;
+            break;
+          }
+        }
+      }
+      return i2;
+    }
+    var doubleQuote = '"';
+    var singleQuote = "'";
+    function readAttributeStr(xmlData, i2) {
+      let attrStr = "";
+      let startChar = "";
+      let tagClosed = false;
+      for (; i2 < xmlData.length; i2++) {
+        if (xmlData[i2] === doubleQuote || xmlData[i2] === singleQuote) {
+          if (startChar === "") {
+            startChar = xmlData[i2];
+          } else if (startChar !== xmlData[i2]) {
+          } else {
+            startChar = "";
+          }
+        } else if (xmlData[i2] === ">") {
+          if (startChar === "") {
+            tagClosed = true;
+            break;
+          }
+        }
+        attrStr += xmlData[i2];
+      }
+      if (startChar !== "") {
+        return false;
+      }
+      return {
+        value: attrStr,
+        index: i2,
+        tagClosed
+      };
+    }
+    var validAttrStrRegxp = new RegExp(`(\\s*)([^\\s=]+)(\\s*=)?(\\s*(['"])(([\\s\\S])*?)\\5)?`, "g");
+    function validateAttributeString(attrStr, options) {
+      const matches2 = util.getAllMatches(attrStr, validAttrStrRegxp);
+      const attrNames = {};
+      for (let i2 = 0; i2 < matches2.length; i2++) {
+        if (matches2[i2][1].length === 0) {
+          return getErrorObject("InvalidAttr", "Attribute '" + matches2[i2][2] + "' has no space in starting.", getPositionFromMatch(matches2[i2]));
+        } else if (matches2[i2][3] !== void 0 && matches2[i2][4] === void 0) {
+          return getErrorObject("InvalidAttr", "Attribute '" + matches2[i2][2] + "' is without value.", getPositionFromMatch(matches2[i2]));
+        } else if (matches2[i2][3] === void 0 && !options.allowBooleanAttributes) {
+          return getErrorObject("InvalidAttr", "boolean attribute '" + matches2[i2][2] + "' is not allowed.", getPositionFromMatch(matches2[i2]));
+        }
+        const attrName = matches2[i2][2];
+        if (!validateAttrName(attrName)) {
+          return getErrorObject("InvalidAttr", "Attribute '" + attrName + "' is an invalid name.", getPositionFromMatch(matches2[i2]));
+        }
+        if (!attrNames.hasOwnProperty(attrName)) {
+          attrNames[attrName] = 1;
+        } else {
+          return getErrorObject("InvalidAttr", "Attribute '" + attrName + "' is repeated.", getPositionFromMatch(matches2[i2]));
+        }
+      }
+      return true;
+    }
+    function validateNumberAmpersand(xmlData, i2) {
+      let re = /\d/;
+      if (xmlData[i2] === "x") {
+        i2++;
+        re = /[\da-fA-F]/;
+      }
+      for (; i2 < xmlData.length; i2++) {
+        if (xmlData[i2] === ";")
+          return i2;
+        if (!xmlData[i2].match(re))
+          break;
+      }
+      return -1;
+    }
+    function validateAmpersand(xmlData, i2) {
+      i2++;
+      if (xmlData[i2] === ";")
+        return -1;
+      if (xmlData[i2] === "#") {
+        i2++;
+        return validateNumberAmpersand(xmlData, i2);
+      }
+      let count = 0;
+      for (; i2 < xmlData.length; i2++, count++) {
+        if (xmlData[i2].match(/\w/) && count < 20)
+          continue;
+        if (xmlData[i2] === ";")
+          break;
+        return -1;
+      }
+      return i2;
+    }
+    function getErrorObject(code, message, lineNumber) {
+      return {
+        err: {
+          code,
+          msg: message,
+          line: lineNumber.line || lineNumber,
+          col: lineNumber.col
+        }
+      };
+    }
+    function validateAttrName(attrName) {
+      return util.isName(attrName);
+    }
+    function validateTagName(tagname) {
+      return util.isName(tagname);
+    }
+    function getLineNumberForPosition(xmlData, index) {
+      const lines = xmlData.substring(0, index).split(/\r?\n/);
+      return {
+        line: lines.length,
+        col: lines[lines.length - 1].length + 1
+      };
+    }
+    function getPositionFromMatch(match) {
+      return match.startIndex + match[1].length;
+    }
   }
 });
 
-// node_modules/fast-xml-parser/src/xmlNode.js
-var require_xmlNode = __commonJS({
-  "node_modules/fast-xml-parser/src/xmlNode.js"(exports, module2) {
-    "use strict";
-    module2.exports = function(tagname, parent, val) {
-      this.tagname = tagname;
-      this.parent = parent;
-      this.child = {};
-      this.attrsMap = {};
-      this.val = val;
-      this.addChild = function(child) {
-        if (Array.isArray(this.child[child.tagname])) {
-          this.child[child.tagname].push(child);
-        } else {
-          this.child[child.tagname] = [child];
-        }
-      };
+// node_modules/fast-xml-parser/src/xmlparser/OptionsBuilder.js
+var require_OptionsBuilder = __commonJS({
+  "node_modules/fast-xml-parser/src/xmlparser/OptionsBuilder.js"(exports) {
+    var defaultOptions = {
+      preserveOrder: false,
+      attributeNamePrefix: "@_",
+      attributesGroupName: false,
+      textNodeName: "#text",
+      ignoreAttributes: true,
+      removeNSPrefix: false,
+      allowBooleanAttributes: false,
+      parseTagValue: true,
+      parseAttributeValue: false,
+      trimValues: true,
+      cdataPropName: false,
+      numberParseOptions: {
+        hex: true,
+        leadingZeros: true,
+        eNotation: true
+      },
+      tagValueProcessor: function(tagName15, val2) {
+        return val2;
+      },
+      attributeValueProcessor: function(attrName, val2) {
+        return val2;
+      },
+      stopNodes: [],
+      alwaysCreateTextNode: false,
+      isArray: () => false,
+      commentPropName: false,
+      unpairedTags: [],
+      processEntities: true,
+      htmlEntities: false,
+      ignoreDeclaration: false,
+      ignorePiTags: false,
+      transformTagName: false,
+      transformAttributeName: false,
+      updateTag: function(tagName15, jPath, attrs) {
+        return tagName15;
+      }
     };
+    var buildOptions = function(options) {
+      return Object.assign({}, defaultOptions, options);
+    };
+    exports.buildOptions = buildOptions;
+    exports.defaultOptions = defaultOptions;
+  }
+});
+
+// node_modules/fast-xml-parser/src/xmlparser/xmlNode.js
+var require_xmlNode = __commonJS({
+  "node_modules/fast-xml-parser/src/xmlparser/xmlNode.js"(exports, module2) {
+    "use strict";
+    var XmlNode = class {
+      constructor(tagname) {
+        this.tagname = tagname;
+        this.child = [];
+        this[":@"] = {};
+      }
+      add(key2, val2) {
+        if (key2 === "__proto__")
+          key2 = "#__proto__";
+        this.child.push({ [key2]: val2 });
+      }
+      addChild(node) {
+        if (node.tagname === "__proto__")
+          node.tagname = "#__proto__";
+        if (node[":@"] && Object.keys(node[":@"]).length > 0) {
+          this.child.push({ [node.tagname]: node.child, [":@"]: node[":@"] });
+        } else {
+          this.child.push({ [node.tagname]: node.child });
+        }
+      }
+    };
+    module2.exports = XmlNode;
+  }
+});
+
+// node_modules/fast-xml-parser/src/xmlparser/DocTypeReader.js
+var require_DocTypeReader = __commonJS({
+  "node_modules/fast-xml-parser/src/xmlparser/DocTypeReader.js"(exports, module2) {
+    var util = require_util();
+    function readDocType(xmlData, i2) {
+      const entities = {};
+      if (xmlData[i2 + 3] === "O" && xmlData[i2 + 4] === "C" && xmlData[i2 + 5] === "T" && xmlData[i2 + 6] === "Y" && xmlData[i2 + 7] === "P" && xmlData[i2 + 8] === "E") {
+        i2 = i2 + 9;
+        let angleBracketsCount = 1;
+        let hasBody = false, comment = false;
+        let exp = "";
+        for (; i2 < xmlData.length; i2++) {
+          if (xmlData[i2] === "<" && !comment) {
+            if (hasBody && isEntity(xmlData, i2)) {
+              i2 += 7;
+              [entityName, val, i2] = readEntityExp(xmlData, i2 + 1);
+              if (val.indexOf("&") === -1)
+                entities[validateEntityName(entityName)] = {
+                  regx: RegExp(`&${entityName};`, "g"),
+                  val
+                };
+            } else if (hasBody && isElement(xmlData, i2))
+              i2 += 8;
+            else if (hasBody && isAttlist(xmlData, i2))
+              i2 += 8;
+            else if (hasBody && isNotation(xmlData, i2))
+              i2 += 9;
+            else if (isComment)
+              comment = true;
+            else
+              throw new Error("Invalid DOCTYPE");
+            angleBracketsCount++;
+            exp = "";
+          } else if (xmlData[i2] === ">") {
+            if (comment) {
+              if (xmlData[i2 - 1] === "-" && xmlData[i2 - 2] === "-") {
+                comment = false;
+                angleBracketsCount--;
+              }
+            } else {
+              angleBracketsCount--;
+            }
+            if (angleBracketsCount === 0) {
+              break;
+            }
+          } else if (xmlData[i2] === "[") {
+            hasBody = true;
+          } else {
+            exp += xmlData[i2];
+          }
+        }
+        if (angleBracketsCount !== 0) {
+          throw new Error(`Unclosed DOCTYPE`);
+        }
+      } else {
+        throw new Error(`Invalid Tag instead of DOCTYPE`);
+      }
+      return { entities, i: i2 };
+    }
+    function readEntityExp(xmlData, i2) {
+      let entityName2 = "";
+      for (; i2 < xmlData.length && (xmlData[i2] !== "'" && xmlData[i2] !== '"'); i2++) {
+        entityName2 += xmlData[i2];
+      }
+      entityName2 = entityName2.trim();
+      if (entityName2.indexOf(" ") !== -1)
+        throw new Error("External entites are not supported");
+      const startChar = xmlData[i2++];
+      let val2 = "";
+      for (; i2 < xmlData.length && xmlData[i2] !== startChar; i2++) {
+        val2 += xmlData[i2];
+      }
+      return [entityName2, val2, i2];
+    }
+    function isComment(xmlData, i2) {
+      if (xmlData[i2 + 1] === "!" && xmlData[i2 + 2] === "-" && xmlData[i2 + 3] === "-")
+        return true;
+      return false;
+    }
+    function isEntity(xmlData, i2) {
+      if (xmlData[i2 + 1] === "!" && xmlData[i2 + 2] === "E" && xmlData[i2 + 3] === "N" && xmlData[i2 + 4] === "T" && xmlData[i2 + 5] === "I" && xmlData[i2 + 6] === "T" && xmlData[i2 + 7] === "Y")
+        return true;
+      return false;
+    }
+    function isElement(xmlData, i2) {
+      if (xmlData[i2 + 1] === "!" && xmlData[i2 + 2] === "E" && xmlData[i2 + 3] === "L" && xmlData[i2 + 4] === "E" && xmlData[i2 + 5] === "M" && xmlData[i2 + 6] === "E" && xmlData[i2 + 7] === "N" && xmlData[i2 + 8] === "T")
+        return true;
+      return false;
+    }
+    function isAttlist(xmlData, i2) {
+      if (xmlData[i2 + 1] === "!" && xmlData[i2 + 2] === "A" && xmlData[i2 + 3] === "T" && xmlData[i2 + 4] === "T" && xmlData[i2 + 5] === "L" && xmlData[i2 + 6] === "I" && xmlData[i2 + 7] === "S" && xmlData[i2 + 8] === "T")
+        return true;
+      return false;
+    }
+    function isNotation(xmlData, i2) {
+      if (xmlData[i2 + 1] === "!" && xmlData[i2 + 2] === "N" && xmlData[i2 + 3] === "O" && xmlData[i2 + 4] === "T" && xmlData[i2 + 5] === "A" && xmlData[i2 + 6] === "T" && xmlData[i2 + 7] === "I" && xmlData[i2 + 8] === "O" && xmlData[i2 + 9] === "N")
+        return true;
+      return false;
+    }
+    function validateEntityName(name) {
+      if (util.isName(name))
+        return name;
+      else
+        throw new Error(`Invalid entity name ${name}`);
+    }
+    module2.exports = readDocType;
   }
 });
 
@@ -4437,81 +16381,88 @@ var require_strnum = __commonJS({
   }
 });
 
-// node_modules/fast-xml-parser/src/xmlstr2xmlnode.js
-var require_xmlstr2xmlnode = __commonJS({
-  "node_modules/fast-xml-parser/src/xmlstr2xmlnode.js"(exports) {
+// node_modules/fast-xml-parser/src/xmlparser/OrderedObjParser.js
+var require_OrderedObjParser = __commonJS({
+  "node_modules/fast-xml-parser/src/xmlparser/OrderedObjParser.js"(exports, module2) {
     "use strict";
     var util = require_util();
-    var buildOptions = require_util().buildOptions;
     var xmlNode = require_xmlNode();
+    var readDocType = require_DocTypeReader();
     var toNumber = require_strnum();
     var regx = "<((!\\[CDATA\\[([\\s\\S]*?)(]]>))|((NAME:)?(NAME))([^>]*)>|((\\/)(NAME)\\s*>))([^<]*)".replace(/NAME/g, util.nameRegexp);
-    if (!Number.parseInt && window.parseInt) {
-      Number.parseInt = window.parseInt;
-    }
-    if (!Number.parseFloat && window.parseFloat) {
-      Number.parseFloat = window.parseFloat;
-    }
-    var defaultOptions = {
-      attributeNamePrefix: "@_",
-      attrNodeName: false,
-      textNodeName: "#text",
-      ignoreAttributes: true,
-      ignoreNameSpace: false,
-      allowBooleanAttributes: false,
-      parseNodeValue: true,
-      parseAttributeValue: false,
-      arrayMode: false,
-      trimValues: true,
-      cdataTagName: false,
-      cdataPositionChar: "\\c",
-      numParseOptions: {
-        hex: true,
-        leadingZeros: true
-      },
-      tagValueProcessor: function(a, tagName15) {
-        return a;
-      },
-      attrValueProcessor: function(a, attrName) {
-        return a;
-      },
-      stopNodes: [],
-      alwaysCreateTextNode: false
-    };
-    exports.defaultOptions = defaultOptions;
-    var props = [
-      "attributeNamePrefix",
-      "attrNodeName",
-      "textNodeName",
-      "ignoreAttributes",
-      "ignoreNameSpace",
-      "allowBooleanAttributes",
-      "parseNodeValue",
-      "parseAttributeValue",
-      "arrayMode",
-      "trimValues",
-      "cdataTagName",
-      "cdataPositionChar",
-      "tagValueProcessor",
-      "attrValueProcessor",
-      "parseTrueNumberOnly",
-      "numParseOptions",
-      "stopNodes",
-      "alwaysCreateTextNode"
-    ];
-    exports.props = props;
-    function processTagValue(tagName15, val, options) {
-      if (val) {
-        if (options.trimValues) {
-          val = val.trim();
-        }
-        val = options.tagValueProcessor(val, tagName15);
-        val = parseValue(val, options.parseNodeValue, options.numParseOptions);
+    var OrderedObjParser = class {
+      constructor(options) {
+        this.options = options;
+        this.currentNode = null;
+        this.tagsNodeStack = [];
+        this.docTypeEntities = {};
+        this.lastEntities = {
+          "apos": { regex: /&(apos|#39|#x27);/g, val: "'" },
+          "gt": { regex: /&(gt|#62|#x3E);/g, val: ">" },
+          "lt": { regex: /&(lt|#60|#x3C);/g, val: "<" },
+          "quot": { regex: /&(quot|#34|#x22);/g, val: '"' }
+        };
+        this.ampEntity = { regex: /&(amp|#38|#x26);/g, val: "&" };
+        this.htmlEntities = {
+          "space": { regex: /&(nbsp|#160);/g, val: " " },
+          "cent": { regex: /&(cent|#162);/g, val: "\xA2" },
+          "pound": { regex: /&(pound|#163);/g, val: "\xA3" },
+          "yen": { regex: /&(yen|#165);/g, val: "\xA5" },
+          "euro": { regex: /&(euro|#8364);/g, val: "\u20AC" },
+          "copyright": { regex: /&(copy|#169);/g, val: "\xA9" },
+          "reg": { regex: /&(reg|#174);/g, val: "\xAE" },
+          "inr": { regex: /&(inr|#8377);/g, val: "\u20B9" }
+        };
+        this.addExternalEntities = addExternalEntities;
+        this.parseXml = parseXml;
+        this.parseTextData = parseTextData;
+        this.resolveNameSpace = resolveNameSpace;
+        this.buildAttributesMap = buildAttributesMap;
+        this.isItStopNode = isItStopNode;
+        this.replaceEntitiesValue = replaceEntitiesValue;
+        this.readStopNodeData = readStopNodeData;
+        this.saveTextToParentTag = saveTextToParentTag;
+        this.addChild = addChild;
       }
-      return val;
+    };
+    function addExternalEntities(externalEntities) {
+      const entKeys = Object.keys(externalEntities);
+      for (let i2 = 0; i2 < entKeys.length; i2++) {
+        const ent = entKeys[i2];
+        this.lastEntities[ent] = {
+          regex: new RegExp("&" + ent + ";", "g"),
+          val: externalEntities[ent]
+        };
+      }
     }
-    function resolveNameSpace(tagname, options) {
-      if (options.ignoreNameSpace) {
+    function parseTextData(val2, tagName15, jPath, dontTrim, hasAttributes, isLeafNode, escapeEntities) {
+      if (val2 !== void 0) {
+        if (this.options.trimValues && !dontTrim) {
+          val2 = val2.trim();
+        }
+        if (val2.length > 0) {
+          if (!escapeEntities)
+            val2 = this.replaceEntitiesValue(val2);
+          const newval = this.options.tagValueProcessor(tagName15, val2, jPath, hasAttributes, isLeafNode);
+          if (newval === null || newval === void 0) {
+            return val2;
+          } else if (typeof newval !== typeof val2 || newval !== val2) {
+            return newval;
+          } else if (this.options.trimValues) {
+            return parseValue(val2, this.options.parseTagValue, this.options.numberParseOptions);
+          } else {
+            const trimmedVal = val2.trim();
+            if (trimmedVal === val2) {
+              return parseValue(val2, this.options.parseTagValue, this.options.numberParseOptions);
+            } else {
+              return val2;
+            }
+          }
+        }
+      }
+    }
+    function resolveNameSpace(tagname) {
+      if (this.options.removeNSPrefix) {
         const tags = tagname.split(":");
         const prefix = tagname.charAt(0) === "/" ? "/" : "";
         if (tags[0] === "xmlns") {
@@ -4523,190 +16474,286 @@ var require_xmlstr2xmlnode = __commonJS({
       }
       return tagname;
     }
-    function parseValue(val, shouldParse, options) {
-      if (shouldParse && typeof val === "string") {
-        const newval = val.trim();
-        if (newval === "true")
-          return true;
-        else if (newval === "false")
-          return false;
-        else
-          return toNumber(val, options);
-      } else {
-        if (util.isExist(val)) {
-          return val;
-        } else {
-          return "";
-        }
-      }
-    }
-    var attrsRegx = new RegExp(`([^\\s=]+)\\s*(=\\s*(['"])(.*?)\\3)?`, "g");
-    function buildAttributesMap(attrStr, options) {
-      if (!options.ignoreAttributes && typeof attrStr === "string") {
-        attrStr = attrStr.replace(/\r?\n/g, " ");
+    var attrsRegx = new RegExp(`([^\\s=]+)\\s*(=\\s*(['"])([\\s\\S]*?)\\3)?`, "gm");
+    function buildAttributesMap(attrStr, jPath, tagName15) {
+      if (!this.options.ignoreAttributes && typeof attrStr === "string") {
         const matches2 = util.getAllMatches(attrStr, attrsRegx);
         const len = matches2.length;
         const attrs = {};
         for (let i2 = 0; i2 < len; i2++) {
-          const attrName = resolveNameSpace(matches2[i2][1], options);
+          const attrName = this.resolveNameSpace(matches2[i2][1]);
+          let oldVal = matches2[i2][4];
+          let aName = this.options.attributeNamePrefix + attrName;
           if (attrName.length) {
-            if (matches2[i2][4] !== void 0) {
-              if (options.trimValues) {
-                matches2[i2][4] = matches2[i2][4].trim();
+            if (this.options.transformAttributeName) {
+              aName = this.options.transformAttributeName(aName);
+            }
+            if (aName === "__proto__")
+              aName = "#__proto__";
+            if (oldVal !== void 0) {
+              if (this.options.trimValues) {
+                oldVal = oldVal.trim();
               }
-              matches2[i2][4] = options.attrValueProcessor(matches2[i2][4], attrName);
-              attrs[options.attributeNamePrefix + attrName] = parseValue(matches2[i2][4], options.parseAttributeValue, options.numParseOptions);
-            } else if (options.allowBooleanAttributes) {
-              attrs[options.attributeNamePrefix + attrName] = true;
+              oldVal = this.replaceEntitiesValue(oldVal);
+              const newVal = this.options.attributeValueProcessor(attrName, oldVal, jPath);
+              if (newVal === null || newVal === void 0) {
+                attrs[aName] = oldVal;
+              } else if (typeof newVal !== typeof oldVal || newVal !== oldVal) {
+                attrs[aName] = newVal;
+              } else {
+                attrs[aName] = parseValue(oldVal, this.options.parseAttributeValue, this.options.numberParseOptions);
+              }
+            } else if (this.options.allowBooleanAttributes) {
+              attrs[aName] = true;
             }
           }
         }
         if (!Object.keys(attrs).length) {
           return;
         }
-        if (options.attrNodeName) {
+        if (this.options.attributesGroupName) {
           const attrCollection = {};
-          attrCollection[options.attrNodeName] = attrs;
+          attrCollection[this.options.attributesGroupName] = attrs;
           return attrCollection;
         }
         return attrs;
       }
     }
-    var getTraversalObj = function(xmlData, options) {
+    var parseXml = function(xmlData) {
       xmlData = xmlData.replace(/\r\n?/g, "\n");
-      options = buildOptions(options, defaultOptions, props);
       const xmlObj = new xmlNode("!xml");
       let currentNode = xmlObj;
       let textData = "";
+      let jPath = "";
       for (let i2 = 0; i2 < xmlData.length; i2++) {
         const ch = xmlData[i2];
         if (ch === "<") {
           if (xmlData[i2 + 1] === "/") {
             const closeIndex = findClosingIndex(xmlData, ">", i2, "Closing Tag is not closed.");
             let tagName15 = xmlData.substring(i2 + 2, closeIndex).trim();
-            if (options.ignoreNameSpace) {
+            if (this.options.removeNSPrefix) {
               const colonIndex = tagName15.indexOf(":");
               if (colonIndex !== -1) {
                 tagName15 = tagName15.substr(colonIndex + 1);
               }
             }
+            if (this.options.transformTagName) {
+              tagName15 = this.options.transformTagName(tagName15);
+            }
             if (currentNode) {
-              if (currentNode.val) {
-                currentNode.val = util.getValue(currentNode.val) + "" + processTagValue(tagName15, textData, options);
-              } else {
-                currentNode.val = processTagValue(tagName15, textData, options);
-              }
+              textData = this.saveTextToParentTag(textData, currentNode, jPath);
             }
-            if (options.stopNodes.length && options.stopNodes.includes(currentNode.tagname)) {
-              currentNode.child = [];
-              if (currentNode.attrsMap == void 0) {
-                currentNode.attrsMap = {};
-              }
-              currentNode.val = xmlData.substr(currentNode.startIndex + 1, i2 - currentNode.startIndex - 1);
+            const lastTagName = jPath.substring(jPath.lastIndexOf(".") + 1);
+            if (tagName15 && this.options.unpairedTags.indexOf(tagName15) !== -1) {
+              throw new Error(`Unpaired tag can not be used as closing tag: </${tagName15}>`);
             }
-            currentNode = currentNode.parent;
+            let propIndex = 0;
+            if (lastTagName && this.options.unpairedTags.indexOf(lastTagName) !== -1) {
+              propIndex = jPath.lastIndexOf(".", jPath.lastIndexOf(".") - 1);
+              this.tagsNodeStack.pop();
+            } else {
+              propIndex = jPath.lastIndexOf(".");
+            }
+            jPath = jPath.substring(0, propIndex);
+            currentNode = this.tagsNodeStack.pop();
             textData = "";
             i2 = closeIndex;
           } else if (xmlData[i2 + 1] === "?") {
-            i2 = findClosingIndex(xmlData, "?>", i2, "Pi Tag is not closed.");
-          } else if (xmlData.substr(i2 + 1, 3) === "!--") {
-            i2 = findClosingIndex(xmlData, "-->", i2, "Comment is not closed.");
-          } else if (xmlData.substr(i2 + 1, 2) === "!D") {
-            const closeIndex = findClosingIndex(xmlData, ">", i2, "DOCTYPE is not closed.");
-            const tagExp = xmlData.substring(i2, closeIndex);
-            if (tagExp.indexOf("[") >= 0) {
-              i2 = xmlData.indexOf("]>", i2) + 1;
+            let tagData = readTagExp(xmlData, i2, false, "?>");
+            if (!tagData)
+              throw new Error("Pi Tag is not closed.");
+            textData = this.saveTextToParentTag(textData, currentNode, jPath);
+            if (this.options.ignoreDeclaration && tagData.tagName === "?xml" || this.options.ignorePiTags) {
             } else {
-              i2 = closeIndex;
+              const childNode = new xmlNode(tagData.tagName);
+              childNode.add(this.options.textNodeName, "");
+              if (tagData.tagName !== tagData.tagExp && tagData.attrExpPresent) {
+                childNode[":@"] = this.buildAttributesMap(tagData.tagExp, jPath, tagData.tagName);
+              }
+              this.addChild(currentNode, childNode, jPath);
             }
+            i2 = tagData.closeIndex + 1;
+          } else if (xmlData.substr(i2 + 1, 3) === "!--") {
+            const endIndex = findClosingIndex(xmlData, "-->", i2 + 4, "Comment is not closed.");
+            if (this.options.commentPropName) {
+              const comment = xmlData.substring(i2 + 4, endIndex - 2);
+              textData = this.saveTextToParentTag(textData, currentNode, jPath);
+              currentNode.add(this.options.commentPropName, [{ [this.options.textNodeName]: comment }]);
+            }
+            i2 = endIndex;
+          } else if (xmlData.substr(i2 + 1, 2) === "!D") {
+            const result = readDocType(xmlData, i2);
+            this.docTypeEntities = result.entities;
+            i2 = result.i;
           } else if (xmlData.substr(i2 + 1, 2) === "![") {
             const closeIndex = findClosingIndex(xmlData, "]]>", i2, "CDATA is not closed.") - 2;
             const tagExp = xmlData.substring(i2 + 9, closeIndex);
-            if (textData) {
-              currentNode.val = util.getValue(currentNode.val) + "" + processTagValue(currentNode.tagname, textData, options);
-              textData = "";
-            }
-            if (options.cdataTagName) {
-              const childNode = new xmlNode(options.cdataTagName, currentNode, tagExp);
-              currentNode.addChild(childNode);
-              currentNode.val = util.getValue(currentNode.val) + options.cdataPositionChar;
-              if (tagExp) {
-                childNode.val = tagExp;
-              }
+            textData = this.saveTextToParentTag(textData, currentNode, jPath);
+            if (this.options.cdataPropName) {
+              currentNode.add(this.options.cdataPropName, [{ [this.options.textNodeName]: tagExp }]);
             } else {
-              currentNode.val = (currentNode.val || "") + (tagExp || "");
+              let val2 = this.parseTextData(tagExp, currentNode.tagname, jPath, true, false, true);
+              if (val2 == void 0)
+                val2 = "";
+              currentNode.add(this.options.textNodeName, val2);
             }
             i2 = closeIndex + 2;
           } else {
-            const result = closingIndexForOpeningTag(xmlData, i2 + 1);
-            let tagExp = result.data;
-            const closeIndex = result.index;
-            const separatorIndex = tagExp.indexOf(" ");
-            let tagName15 = tagExp;
-            let shouldBuildAttributesMap = true;
-            if (separatorIndex !== -1) {
-              tagName15 = tagExp.substr(0, separatorIndex).replace(/\s\s*$/, "");
-              tagExp = tagExp.substr(separatorIndex + 1);
-            }
-            if (options.ignoreNameSpace) {
-              const colonIndex = tagName15.indexOf(":");
-              if (colonIndex !== -1) {
-                tagName15 = tagName15.substr(colonIndex + 1);
-                shouldBuildAttributesMap = tagName15 !== result.data.substr(colonIndex + 1);
-              }
+            let result = readTagExp(xmlData, i2, this.options.removeNSPrefix);
+            let tagName15 = result.tagName;
+            let tagExp = result.tagExp;
+            let attrExpPresent = result.attrExpPresent;
+            let closeIndex = result.closeIndex;
+            if (this.options.transformTagName) {
+              tagName15 = this.options.transformTagName(tagName15);
             }
             if (currentNode && textData) {
               if (currentNode.tagname !== "!xml") {
-                currentNode.val = util.getValue(currentNode.val) + "" + processTagValue(currentNode.tagname, textData, options);
+                textData = this.saveTextToParentTag(textData, currentNode, jPath, false);
               }
             }
-            if (tagExp.length > 0 && tagExp.lastIndexOf("/") === tagExp.length - 1) {
-              if (tagName15[tagName15.length - 1] === "/") {
-                tagName15 = tagName15.substr(0, tagName15.length - 1);
-                tagExp = tagName15;
+            const lastTag = currentNode;
+            if (lastTag && this.options.unpairedTags.indexOf(lastTag.tagname) !== -1) {
+              currentNode = this.tagsNodeStack.pop();
+              jPath = jPath.substring(0, jPath.lastIndexOf("."));
+            }
+            if (tagName15 !== xmlObj.tagname) {
+              jPath += jPath ? "." + tagName15 : tagName15;
+            }
+            if (this.isItStopNode(this.options.stopNodes, jPath, tagName15)) {
+              let tagContent = "";
+              if (tagExp.length > 0 && tagExp.lastIndexOf("/") === tagExp.length - 1) {
+                i2 = result.closeIndex;
+              } else if (this.options.unpairedTags.indexOf(tagName15) !== -1) {
+                i2 = result.closeIndex;
               } else {
-                tagExp = tagExp.substr(0, tagExp.length - 1);
+                const result2 = this.readStopNodeData(xmlData, tagName15, closeIndex + 1);
+                if (!result2)
+                  throw new Error(`Unexpected end of ${tagName15}`);
+                i2 = result2.i;
+                tagContent = result2.tagContent;
               }
-              const childNode = new xmlNode(tagName15, currentNode, "");
-              if (tagName15 !== tagExp) {
-                childNode.attrsMap = buildAttributesMap(tagExp, options);
+              const childNode = new xmlNode(tagName15);
+              if (tagName15 !== tagExp && attrExpPresent) {
+                childNode[":@"] = this.buildAttributesMap(tagExp, jPath, tagName15);
               }
-              currentNode.addChild(childNode);
+              if (tagContent) {
+                tagContent = this.parseTextData(tagContent, tagName15, jPath, true, attrExpPresent, true, true);
+              }
+              jPath = jPath.substr(0, jPath.lastIndexOf("."));
+              childNode.add(this.options.textNodeName, tagContent);
+              this.addChild(currentNode, childNode, jPath);
             } else {
-              const childNode = new xmlNode(tagName15, currentNode);
-              if (options.stopNodes.length && options.stopNodes.includes(childNode.tagname)) {
-                childNode.startIndex = closeIndex;
+              if (tagExp.length > 0 && tagExp.lastIndexOf("/") === tagExp.length - 1) {
+                if (tagName15[tagName15.length - 1] === "/") {
+                  tagName15 = tagName15.substr(0, tagName15.length - 1);
+                  jPath = jPath.substr(0, jPath.length - 1);
+                  tagExp = tagName15;
+                } else {
+                  tagExp = tagExp.substr(0, tagExp.length - 1);
+                }
+                if (this.options.transformTagName) {
+                  tagName15 = this.options.transformTagName(tagName15);
+                }
+                const childNode = new xmlNode(tagName15);
+                if (tagName15 !== tagExp && attrExpPresent) {
+                  childNode[":@"] = this.buildAttributesMap(tagExp, jPath, tagName15);
+                }
+                this.addChild(currentNode, childNode, jPath);
+                jPath = jPath.substr(0, jPath.lastIndexOf("."));
+              } else {
+                const childNode = new xmlNode(tagName15);
+                this.tagsNodeStack.push(currentNode);
+                if (tagName15 !== tagExp && attrExpPresent) {
+                  childNode[":@"] = this.buildAttributesMap(tagExp, jPath, tagName15);
+                }
+                this.addChild(currentNode, childNode, jPath);
+                currentNode = childNode;
               }
-              if (tagName15 !== tagExp && shouldBuildAttributesMap) {
-                childNode.attrsMap = buildAttributesMap(tagExp, options);
-              }
-              currentNode.addChild(childNode);
-              currentNode = childNode;
+              textData = "";
+              i2 = closeIndex;
             }
-            textData = "";
-            i2 = closeIndex;
           }
         } else {
           textData += xmlData[i2];
         }
       }
-      return xmlObj;
+      return xmlObj.child;
     };
-    function closingIndexForOpeningTag(data, i2) {
+    function addChild(currentNode, childNode, jPath) {
+      const result = this.options.updateTag(childNode.tagname, jPath, childNode[":@"]);
+      if (result === false) {
+      } else if (typeof result === "string") {
+        childNode.tagname = result;
+        currentNode.addChild(childNode);
+      } else {
+        currentNode.addChild(childNode);
+      }
+    }
+    var replaceEntitiesValue = function(val2) {
+      if (this.options.processEntities) {
+        for (let entityName2 in this.docTypeEntities) {
+          const entity = this.docTypeEntities[entityName2];
+          val2 = val2.replace(entity.regx, entity.val);
+        }
+        for (let entityName2 in this.lastEntities) {
+          const entity = this.lastEntities[entityName2];
+          val2 = val2.replace(entity.regex, entity.val);
+        }
+        if (this.options.htmlEntities) {
+          for (let entityName2 in this.htmlEntities) {
+            const entity = this.htmlEntities[entityName2];
+            val2 = val2.replace(entity.regex, entity.val);
+          }
+        }
+        val2 = val2.replace(this.ampEntity.regex, this.ampEntity.val);
+      }
+      return val2;
+    };
+    function saveTextToParentTag(textData, currentNode, jPath, isLeafNode) {
+      if (textData) {
+        if (isLeafNode === void 0)
+          isLeafNode = Object.keys(currentNode.child).length === 0;
+        textData = this.parseTextData(textData, currentNode.tagname, jPath, false, currentNode[":@"] ? Object.keys(currentNode[":@"]).length !== 0 : false, isLeafNode);
+        if (textData !== void 0 && textData !== "")
+          currentNode.add(this.options.textNodeName, textData);
+        textData = "";
+      }
+      return textData;
+    }
+    function isItStopNode(stopNodes, jPath, currentTagName) {
+      const allNodesExp = "*." + currentTagName;
+      for (const stopNodePath in stopNodes) {
+        const stopNodeExp = stopNodes[stopNodePath];
+        if (allNodesExp === stopNodeExp || jPath === stopNodeExp)
+          return true;
+      }
+      return false;
+    }
+    function tagExpWithClosingIndex(xmlData, i2, closingChar = ">") {
       let attrBoundary;
       let tagExp = "";
-      for (let index = i2; index < data.length; index++) {
-        let ch = data[index];
+      for (let index = i2; index < xmlData.length; index++) {
+        let ch = xmlData[index];
         if (attrBoundary) {
           if (ch === attrBoundary)
             attrBoundary = "";
         } else if (ch === '"' || ch === "'") {
           attrBoundary = ch;
-        } else if (ch === ">") {
-          return {
-            data: tagExp,
-            index
-          };
+        } else if (ch === closingChar[0]) {
+          if (closingChar[1]) {
+            if (xmlData[index + 1] === closingChar[1]) {
+              return {
+                data: tagExp,
+                index
+              };
+            }
+          } else {
+            return {
+              data: tagExp,
+              index
+            };
+          }
         } else if (ch === "	") {
           ch = " ";
         }
@@ -4721,523 +16768,408 @@ var require_xmlstr2xmlnode = __commonJS({
         return closingIndex + str.length - 1;
       }
     }
-    exports.getTraversalObj = getTraversalObj;
+    function readTagExp(xmlData, i2, removeNSPrefix, closingChar = ">") {
+      const result = tagExpWithClosingIndex(xmlData, i2 + 1, closingChar);
+      if (!result)
+        return;
+      let tagExp = result.data;
+      const closeIndex = result.index;
+      const separatorIndex = tagExp.search(/\s/);
+      let tagName15 = tagExp;
+      let attrExpPresent = true;
+      if (separatorIndex !== -1) {
+        tagName15 = tagExp.substr(0, separatorIndex).replace(/\s\s*$/, "");
+        tagExp = tagExp.substr(separatorIndex + 1);
+      }
+      if (removeNSPrefix) {
+        const colonIndex = tagName15.indexOf(":");
+        if (colonIndex !== -1) {
+          tagName15 = tagName15.substr(colonIndex + 1);
+          attrExpPresent = tagName15 !== result.data.substr(colonIndex + 1);
+        }
+      }
+      return {
+        tagName: tagName15,
+        tagExp,
+        closeIndex,
+        attrExpPresent
+      };
+    }
+    function readStopNodeData(xmlData, tagName15, i2) {
+      const startIndex = i2;
+      let openTagCount = 1;
+      for (; i2 < xmlData.length; i2++) {
+        if (xmlData[i2] === "<") {
+          if (xmlData[i2 + 1] === "/") {
+            const closeIndex = findClosingIndex(xmlData, ">", i2, `${tagName15} is not closed`);
+            let closeTagName = xmlData.substring(i2 + 2, closeIndex).trim();
+            if (closeTagName === tagName15) {
+              openTagCount--;
+              if (openTagCount === 0) {
+                return {
+                  tagContent: xmlData.substring(startIndex, i2),
+                  i: closeIndex
+                };
+              }
+            }
+            i2 = closeIndex;
+          } else if (xmlData[i2 + 1] === "?") {
+            const closeIndex = findClosingIndex(xmlData, "?>", i2 + 1, "StopNode is not closed.");
+            i2 = closeIndex;
+          } else if (xmlData.substr(i2 + 1, 3) === "!--") {
+            const closeIndex = findClosingIndex(xmlData, "-->", i2 + 3, "StopNode is not closed.");
+            i2 = closeIndex;
+          } else if (xmlData.substr(i2 + 1, 2) === "![") {
+            const closeIndex = findClosingIndex(xmlData, "]]>", i2, "StopNode is not closed.") - 2;
+            i2 = closeIndex;
+          } else {
+            const tagData = readTagExp(xmlData, i2, ">");
+            if (tagData) {
+              const openTagName = tagData && tagData.tagName;
+              if (openTagName === tagName15 && tagData.tagExp[tagData.tagExp.length - 1] !== "/") {
+                openTagCount++;
+              }
+              i2 = tagData.closeIndex;
+            }
+          }
+        }
+      }
+    }
+    function parseValue(val2, shouldParse, options) {
+      if (shouldParse && typeof val2 === "string") {
+        const newval = val2.trim();
+        if (newval === "true")
+          return true;
+        else if (newval === "false")
+          return false;
+        else
+          return toNumber(val2, options);
+      } else {
+        if (util.isExist(val2)) {
+          return val2;
+        } else {
+          return "";
+        }
+      }
+    }
+    module2.exports = OrderedObjParser;
   }
 });
 
-// node_modules/fast-xml-parser/src/validator.js
-var require_validator2 = __commonJS({
-  "node_modules/fast-xml-parser/src/validator.js"(exports) {
+// node_modules/fast-xml-parser/src/xmlparser/node2json.js
+var require_node2json = __commonJS({
+  "node_modules/fast-xml-parser/src/xmlparser/node2json.js"(exports) {
     "use strict";
-    var util = require_util();
-    var defaultOptions = {
-      allowBooleanAttributes: false
-    };
-    var props = ["allowBooleanAttributes"];
-    exports.validate = function(xmlData, options) {
-      options = util.buildOptions(options, defaultOptions, props);
-      const tags = [];
-      let tagFound = false;
-      let reachedRoot = false;
-      if (xmlData[0] === "\uFEFF") {
-        xmlData = xmlData.substr(1);
-      }
-      for (let i2 = 0; i2 < xmlData.length; i2++) {
-        if (xmlData[i2] === "<" && xmlData[i2 + 1] === "?") {
-          i2 += 2;
-          i2 = readPI(xmlData, i2);
-          if (i2.err)
-            return i2;
-        } else if (xmlData[i2] === "<") {
-          let tagStartPos = i2;
-          i2++;
-          if (xmlData[i2] === "!") {
-            i2 = readCommentAndCDATA(xmlData, i2);
-            continue;
-          } else {
-            let closingTag = false;
-            if (xmlData[i2] === "/") {
-              closingTag = true;
-              i2++;
-            }
-            let tagName15 = "";
-            for (; i2 < xmlData.length && xmlData[i2] !== ">" && xmlData[i2] !== " " && xmlData[i2] !== "	" && xmlData[i2] !== "\n" && xmlData[i2] !== "\r"; i2++) {
-              tagName15 += xmlData[i2];
-            }
-            tagName15 = tagName15.trim();
-            if (tagName15[tagName15.length - 1] === "/") {
-              tagName15 = tagName15.substring(0, tagName15.length - 1);
-              i2--;
-            }
-            if (!validateTagName(tagName15)) {
-              let msg;
-              if (tagName15.trim().length === 0) {
-                msg = "Invalid space after '<'.";
-              } else {
-                msg = "Tag '" + tagName15 + "' is an invalid name.";
-              }
-              return getErrorObject("InvalidTag", msg, getLineNumberForPosition(xmlData, i2));
-            }
-            const result = readAttributeStr(xmlData, i2);
-            if (result === false) {
-              return getErrorObject("InvalidAttr", "Attributes for '" + tagName15 + "' have open quote.", getLineNumberForPosition(xmlData, i2));
-            }
-            let attrStr = result.value;
-            i2 = result.index;
-            if (attrStr[attrStr.length - 1] === "/") {
-              const attrStrStart = i2 - attrStr.length;
-              attrStr = attrStr.substring(0, attrStr.length - 1);
-              const isValid = validateAttributeString(attrStr, options);
-              if (isValid === true) {
-                tagFound = true;
-              } else {
-                return getErrorObject(isValid.err.code, isValid.err.msg, getLineNumberForPosition(xmlData, attrStrStart + isValid.err.line));
-              }
-            } else if (closingTag) {
-              if (!result.tagClosed) {
-                return getErrorObject("InvalidTag", "Closing tag '" + tagName15 + "' doesn't have proper closing.", getLineNumberForPosition(xmlData, i2));
-              } else if (attrStr.trim().length > 0) {
-                return getErrorObject("InvalidTag", "Closing tag '" + tagName15 + "' can't have attributes or invalid starting.", getLineNumberForPosition(xmlData, tagStartPos));
-              } else {
-                const otg = tags.pop();
-                if (tagName15 !== otg.tagName) {
-                  let openPos = getLineNumberForPosition(xmlData, otg.tagStartPos);
-                  return getErrorObject("InvalidTag", "Expected closing tag '" + otg.tagName + "' (opened in line " + openPos.line + ", col " + openPos.col + ") instead of closing tag '" + tagName15 + "'.", getLineNumberForPosition(xmlData, tagStartPos));
-                }
-                if (tags.length == 0) {
-                  reachedRoot = true;
-                }
-              }
-            } else {
-              const isValid = validateAttributeString(attrStr, options);
-              if (isValid !== true) {
-                return getErrorObject(isValid.err.code, isValid.err.msg, getLineNumberForPosition(xmlData, i2 - attrStr.length + isValid.err.line));
-              }
-              if (reachedRoot === true) {
-                return getErrorObject("InvalidXml", "Multiple possible root nodes found.", getLineNumberForPosition(xmlData, i2));
-              } else {
-                tags.push({ tagName: tagName15, tagStartPos });
-              }
-              tagFound = true;
-            }
-            for (i2++; i2 < xmlData.length; i2++) {
-              if (xmlData[i2] === "<") {
-                if (xmlData[i2 + 1] === "!") {
-                  i2++;
-                  i2 = readCommentAndCDATA(xmlData, i2);
-                  continue;
-                } else if (xmlData[i2 + 1] === "?") {
-                  i2 = readPI(xmlData, ++i2);
-                  if (i2.err)
-                    return i2;
-                } else {
-                  break;
-                }
-              } else if (xmlData[i2] === "&") {
-                const afterAmp = validateAmpersand(xmlData, i2);
-                if (afterAmp == -1)
-                  return getErrorObject("InvalidChar", "char '&' is not expected.", getLineNumberForPosition(xmlData, i2));
-                i2 = afterAmp;
-              }
-            }
-            if (xmlData[i2] === "<") {
-              i2--;
-            }
-          }
-        } else {
-          if (xmlData[i2] === " " || xmlData[i2] === "	" || xmlData[i2] === "\n" || xmlData[i2] === "\r") {
-            continue;
-          }
-          return getErrorObject("InvalidChar", "char '" + xmlData[i2] + "' is not expected.", getLineNumberForPosition(xmlData, i2));
-        }
-      }
-      if (!tagFound) {
-        return getErrorObject("InvalidXml", "Start tag expected.", 1);
-      } else if (tags.length == 1) {
-        return getErrorObject("InvalidTag", "Unclosed tag '" + tags[0].tagName + "'.", getLineNumberForPosition(xmlData, tags[0].tagStartPos));
-      } else if (tags.length > 0) {
-        return getErrorObject("InvalidXml", "Invalid '" + JSON.stringify(tags.map((t2) => t2.tagName), null, 4).replace(/\r?\n/g, "") + "' found.", { line: 1, col: 1 });
-      }
-      return true;
-    };
-    function readPI(xmlData, i2) {
-      const start = i2;
-      for (; i2 < xmlData.length; i2++) {
-        if (xmlData[i2] == "?" || xmlData[i2] == " ") {
-          const tagname = xmlData.substr(start, i2 - start);
-          if (i2 > 5 && tagname === "xml") {
-            return getErrorObject("InvalidXml", "XML declaration allowed only at the start of the document.", getLineNumberForPosition(xmlData, i2));
-          } else if (xmlData[i2] == "?" && xmlData[i2 + 1] == ">") {
-            i2++;
-            break;
-          } else {
-            continue;
-          }
-        }
-      }
-      return i2;
+    function prettify(node, options) {
+      return compress(node, options);
     }
-    function readCommentAndCDATA(xmlData, i2) {
-      if (xmlData.length > i2 + 5 && xmlData[i2 + 1] === "-" && xmlData[i2 + 2] === "-") {
-        for (i2 += 3; i2 < xmlData.length; i2++) {
-          if (xmlData[i2] === "-" && xmlData[i2 + 1] === "-" && xmlData[i2 + 2] === ">") {
-            i2 += 2;
-            break;
-          }
-        }
-      } else if (xmlData.length > i2 + 8 && xmlData[i2 + 1] === "D" && xmlData[i2 + 2] === "O" && xmlData[i2 + 3] === "C" && xmlData[i2 + 4] === "T" && xmlData[i2 + 5] === "Y" && xmlData[i2 + 6] === "P" && xmlData[i2 + 7] === "E") {
-        let angleBracketsCount = 1;
-        for (i2 += 8; i2 < xmlData.length; i2++) {
-          if (xmlData[i2] === "<") {
-            angleBracketsCount++;
-          } else if (xmlData[i2] === ">") {
-            angleBracketsCount--;
-            if (angleBracketsCount === 0) {
-              break;
-            }
-          }
-        }
-      } else if (xmlData.length > i2 + 9 && xmlData[i2 + 1] === "[" && xmlData[i2 + 2] === "C" && xmlData[i2 + 3] === "D" && xmlData[i2 + 4] === "A" && xmlData[i2 + 5] === "T" && xmlData[i2 + 6] === "A" && xmlData[i2 + 7] === "[") {
-        for (i2 += 8; i2 < xmlData.length; i2++) {
-          if (xmlData[i2] === "]" && xmlData[i2 + 1] === "]" && xmlData[i2 + 2] === ">") {
-            i2 += 2;
-            break;
-          }
-        }
-      }
-      return i2;
-    }
-    var doubleQuote = '"';
-    var singleQuote = "'";
-    function readAttributeStr(xmlData, i2) {
-      let attrStr = "";
-      let startChar = "";
-      let tagClosed = false;
-      for (; i2 < xmlData.length; i2++) {
-        if (xmlData[i2] === doubleQuote || xmlData[i2] === singleQuote) {
-          if (startChar === "") {
-            startChar = xmlData[i2];
-          } else if (startChar !== xmlData[i2]) {
-          } else {
-            startChar = "";
-          }
-        } else if (xmlData[i2] === ">") {
-          if (startChar === "") {
-            tagClosed = true;
-            break;
-          }
-        }
-        attrStr += xmlData[i2];
-      }
-      if (startChar !== "") {
-        return false;
-      }
-      return {
-        value: attrStr,
-        index: i2,
-        tagClosed
-      };
-    }
-    var validAttrStrRegxp = new RegExp(`(\\s*)([^\\s=]+)(\\s*=)?(\\s*(['"])(([\\s\\S])*?)\\5)?`, "g");
-    function validateAttributeString(attrStr, options) {
-      const matches2 = util.getAllMatches(attrStr, validAttrStrRegxp);
-      const attrNames = {};
-      for (let i2 = 0; i2 < matches2.length; i2++) {
-        if (matches2[i2][1].length === 0) {
-          return getErrorObject("InvalidAttr", "Attribute '" + matches2[i2][2] + "' has no space in starting.", getPositionFromMatch(matches2[i2]));
-        } else if (matches2[i2][3] === void 0 && !options.allowBooleanAttributes) {
-          return getErrorObject("InvalidAttr", "boolean attribute '" + matches2[i2][2] + "' is not allowed.", getPositionFromMatch(matches2[i2]));
-        }
-        const attrName = matches2[i2][2];
-        if (!validateAttrName(attrName)) {
-          return getErrorObject("InvalidAttr", "Attribute '" + attrName + "' is an invalid name.", getPositionFromMatch(matches2[i2]));
-        }
-        if (!attrNames.hasOwnProperty(attrName)) {
-          attrNames[attrName] = 1;
-        } else {
-          return getErrorObject("InvalidAttr", "Attribute '" + attrName + "' is repeated.", getPositionFromMatch(matches2[i2]));
-        }
-      }
-      return true;
-    }
-    function validateNumberAmpersand(xmlData, i2) {
-      let re = /\d/;
-      if (xmlData[i2] === "x") {
-        i2++;
-        re = /[\da-fA-F]/;
-      }
-      for (; i2 < xmlData.length; i2++) {
-        if (xmlData[i2] === ";")
-          return i2;
-        if (!xmlData[i2].match(re))
-          break;
-      }
-      return -1;
-    }
-    function validateAmpersand(xmlData, i2) {
-      i2++;
-      if (xmlData[i2] === ";")
-        return -1;
-      if (xmlData[i2] === "#") {
-        i2++;
-        return validateNumberAmpersand(xmlData, i2);
-      }
-      let count = 0;
-      for (; i2 < xmlData.length; i2++, count++) {
-        if (xmlData[i2].match(/\w/) && count < 20)
+    function compress(arr, options, jPath) {
+      let text;
+      const compressedObj = {};
+      for (let i2 = 0; i2 < arr.length; i2++) {
+        const tagObj = arr[i2];
+        const property = propName(tagObj);
+        let newJpath = "";
+        if (jPath === void 0)
+          newJpath = property;
+        else
+          newJpath = jPath + "." + property;
+        if (property === options.textNodeName) {
+          if (text === void 0)
+            text = tagObj[property];
+          else
+            text += "" + tagObj[property];
+        } else if (property === void 0) {
           continue;
-        if (xmlData[i2] === ";")
-          break;
-        return -1;
-      }
-      return i2;
-    }
-    function getErrorObject(code, message, lineNumber) {
-      return {
-        err: {
-          code,
-          msg: message,
-          line: lineNumber.line || lineNumber,
-          col: lineNumber.col
-        }
-      };
-    }
-    function validateAttrName(attrName) {
-      return util.isName(attrName);
-    }
-    function validateTagName(tagname) {
-      return util.isName(tagname);
-    }
-    function getLineNumberForPosition(xmlData, index) {
-      const lines = xmlData.substring(0, index).split(/\r?\n/);
-      return {
-        line: lines.length,
-        col: lines[lines.length - 1].length + 1
-      };
-    }
-    function getPositionFromMatch(match) {
-      return match.startIndex + match[1].length;
-    }
-  }
-});
-
-// node_modules/fast-xml-parser/src/nimndata.js
-var require_nimndata = __commonJS({
-  "node_modules/fast-xml-parser/src/nimndata.js"(exports) {
-    "use strict";
-    var char = function(a) {
-      return String.fromCharCode(a);
-    };
-    var chars = {
-      nilChar: char(176),
-      missingChar: char(201),
-      nilPremitive: char(175),
-      missingPremitive: char(200),
-      emptyChar: char(178),
-      emptyValue: char(177),
-      boundryChar: char(179),
-      objStart: char(198),
-      arrStart: char(204),
-      arrayEnd: char(185)
-    };
-    var charsArr = [
-      chars.nilChar,
-      chars.nilPremitive,
-      chars.missingChar,
-      chars.missingPremitive,
-      chars.boundryChar,
-      chars.emptyChar,
-      chars.emptyValue,
-      chars.arrayEnd,
-      chars.objStart,
-      chars.arrStart
-    ];
-    var _e = function(node, e_schema, options) {
-      if (typeof e_schema === "string") {
-        if (node && node[0] && node[0].val !== void 0) {
-          return getValue(node[0].val, e_schema);
-        } else {
-          return getValue(node, e_schema);
-        }
-      } else {
-        const hasValidData = hasData(node);
-        if (hasValidData === true) {
-          let str = "";
-          if (Array.isArray(e_schema)) {
-            str += chars.arrStart;
-            const itemSchema = e_schema[0];
-            const arr_len = node.length;
-            if (typeof itemSchema === "string") {
-              for (let arr_i = 0; arr_i < arr_len; arr_i++) {
-                const r2 = getValue(node[arr_i].val, itemSchema);
-                str = processValue(str, r2);
-              }
-            } else {
-              for (let arr_i = 0; arr_i < arr_len; arr_i++) {
-                const r2 = _e(node[arr_i], itemSchema, options);
-                str = processValue(str, r2);
-              }
+        } else if (tagObj[property]) {
+          let val2 = compress(tagObj[property], options, newJpath);
+          const isLeaf = isLeafTag(val2, options);
+          if (tagObj[":@"]) {
+            assignAttributes(val2, tagObj[":@"], newJpath, options);
+          } else if (Object.keys(val2).length === 1 && val2[options.textNodeName] !== void 0 && !options.alwaysCreateTextNode) {
+            val2 = val2[options.textNodeName];
+          } else if (Object.keys(val2).length === 0) {
+            if (options.alwaysCreateTextNode)
+              val2[options.textNodeName] = "";
+            else
+              val2 = "";
+          }
+          if (compressedObj[property] !== void 0 && compressedObj.hasOwnProperty(property)) {
+            if (!Array.isArray(compressedObj[property])) {
+              compressedObj[property] = [compressedObj[property]];
             }
-            str += chars.arrayEnd;
+            compressedObj[property].push(val2);
           } else {
-            str += chars.objStart;
-            const keys2 = Object.keys(e_schema);
-            if (Array.isArray(node)) {
-              node = node[0];
-            }
-            for (let i2 in keys2) {
-              const key2 = keys2[i2];
-              let r2;
-              if (!options.ignoreAttributes && node.attrsMap && node.attrsMap[key2]) {
-                r2 = _e(node.attrsMap[key2], e_schema[key2], options);
-              } else if (key2 === options.textNodeName) {
-                r2 = _e(node.val, e_schema[key2], options);
-              } else {
-                r2 = _e(node.child[key2], e_schema[key2], options);
-              }
-              str = processValue(str, r2);
+            if (options.isArray(property, newJpath, isLeaf)) {
+              compressedObj[property] = [val2];
+            } else {
+              compressedObj[property] = val2;
             }
           }
-          return str;
-        } else {
-          return hasValidData;
         }
       }
-    };
-    var getValue = function(a) {
-      switch (a) {
-        case void 0:
-          return chars.missingPremitive;
-        case null:
-          return chars.nilPremitive;
-        case "":
-          return chars.emptyValue;
-        default:
-          return a;
+      if (typeof text === "string") {
+        if (text.length > 0)
+          compressedObj[options.textNodeName] = text;
+      } else if (text !== void 0)
+        compressedObj[options.textNodeName] = text;
+      return compressedObj;
+    }
+    function propName(obj) {
+      const keys2 = Object.keys(obj);
+      for (let i2 = 0; i2 < keys2.length; i2++) {
+        const key2 = keys2[i2];
+        if (key2 !== ":@")
+          return key2;
       }
-    };
-    var processValue = function(str, r2) {
-      if (!isAppChar(r2[0]) && !isAppChar(str[str.length - 1])) {
-        str += chars.boundryChar;
+    }
+    function assignAttributes(obj, attrMap, jpath, options) {
+      if (attrMap) {
+        const keys2 = Object.keys(attrMap);
+        const len = keys2.length;
+        for (let i2 = 0; i2 < len; i2++) {
+          const atrrName = keys2[i2];
+          if (options.isArray(atrrName, jpath + "." + atrrName, true, true)) {
+            obj[atrrName] = [attrMap[atrrName]];
+          } else {
+            obj[atrrName] = attrMap[atrrName];
+          }
+        }
       }
-      return str + r2;
-    };
-    var isAppChar = function(ch) {
-      return charsArr.indexOf(ch) !== -1;
-    };
-    function hasData(jObj) {
-      if (jObj === void 0) {
-        return chars.missingChar;
-      } else if (jObj === null) {
-        return chars.nilChar;
-      } else if (jObj.child && Object.keys(jObj.child).length === 0 && (!jObj.attrsMap || Object.keys(jObj.attrsMap).length === 0)) {
-        return chars.emptyChar;
-      } else {
+    }
+    function isLeafTag(obj, options) {
+      const { textNodeName } = options;
+      const propCount = Object.keys(obj).length;
+      if (propCount === 0) {
         return true;
       }
+      if (propCount === 1 && (obj[textNodeName] || typeof obj[textNodeName] === "boolean" || obj[textNodeName] === 0)) {
+        return true;
+      }
+      return false;
     }
-    var x2j = require_xmlstr2xmlnode();
-    var buildOptions = require_util().buildOptions;
-    var convert2nimn = function(node, e_schema, options) {
-      options = buildOptions(options, x2j.defaultOptions, x2j.props);
-      return _e(node, e_schema, options);
-    };
-    exports.convert2nimn = convert2nimn;
+    exports.prettify = prettify;
   }
 });
 
-// node_modules/fast-xml-parser/src/node2json_str.js
-var require_node2json_str = __commonJS({
-  "node_modules/fast-xml-parser/src/node2json_str.js"(exports) {
-    "use strict";
-    var util = require_util();
-    var buildOptions = require_util().buildOptions;
-    var x2j = require_xmlstr2xmlnode();
-    var convertToJsonString = function(node, options) {
-      options = buildOptions(options, x2j.defaultOptions, x2j.props);
-      options.indentBy = options.indentBy || "";
-      return _cToJsonStr(node, options, 0);
-    };
-    var _cToJsonStr = function(node, options, level) {
-      let jObj = "{";
-      const keys2 = Object.keys(node.child);
-      for (let index = 0; index < keys2.length; index++) {
-        const tagname = keys2[index];
-        if (node.child[tagname] && node.child[tagname].length > 1) {
-          jObj += '"' + tagname + '" : [ ';
-          for (let tag in node.child[tagname]) {
-            jObj += _cToJsonStr(node.child[tagname][tag], options) + " , ";
-          }
-          jObj = jObj.substr(0, jObj.length - 1) + " ] ";
+// node_modules/fast-xml-parser/src/xmlparser/XMLParser.js
+var require_XMLParser = __commonJS({
+  "node_modules/fast-xml-parser/src/xmlparser/XMLParser.js"(exports, module2) {
+    var { buildOptions } = require_OptionsBuilder();
+    var OrderedObjParser = require_OrderedObjParser();
+    var { prettify } = require_node2json();
+    var validator = require_validator();
+    var XMLParser = class {
+      constructor(options) {
+        this.externalEntities = {};
+        this.options = buildOptions(options);
+      }
+      parse(xmlData, validationOption) {
+        if (typeof xmlData === "string") {
+        } else if (xmlData.toString) {
+          xmlData = xmlData.toString();
         } else {
-          jObj += '"' + tagname + '" : ' + _cToJsonStr(node.child[tagname][0], options) + " ,";
+          throw new Error("XML data is accepted in String or Bytes[] form.");
         }
-      }
-      util.merge(jObj, node.attrsMap);
-      if (util.isEmptyObject(jObj)) {
-        return util.isExist(node.val) ? node.val : "";
-      } else {
-        if (util.isExist(node.val)) {
-          if (!(typeof node.val === "string" && (node.val === "" || node.val === options.cdataPositionChar))) {
-            jObj += '"' + options.textNodeName + '" : ' + stringval(node.val);
+        if (validationOption) {
+          if (validationOption === true)
+            validationOption = {};
+          const result = validator.validate(xmlData, validationOption);
+          if (result !== true) {
+            throw Error(`${result.err.msg}:${result.err.line}:${result.err.col}`);
           }
         }
+        const orderedObjParser = new OrderedObjParser(this.options);
+        orderedObjParser.addExternalEntities(this.externalEntities);
+        const orderedResult = orderedObjParser.parseXml(xmlData);
+        if (this.options.preserveOrder || orderedResult === void 0)
+          return orderedResult;
+        else
+          return prettify(orderedResult, this.options);
       }
-      if (jObj[jObj.length - 1] === ",") {
-        jObj = jObj.substr(0, jObj.length - 2);
+      addEntity(key2, value) {
+        if (value.indexOf("&") !== -1) {
+          throw new Error("Entity value can't have '&'");
+        } else if (key2.indexOf("&") !== -1 || key2.indexOf(";") !== -1) {
+          throw new Error("An entity must be set without '&' and ';'. Eg. use '#xD' for '&#xD;'");
+        } else if (value === "&") {
+          throw new Error("An entity with value '&' is not permitted");
+        } else {
+          this.externalEntities[key2] = value;
+        }
       }
-      return jObj + "}";
     };
-    function stringval(v) {
-      if (v === true || v === false || !isNaN(v)) {
-        return v;
-      } else {
-        return '"' + v + '"';
-      }
-    }
-    exports.convertToJsonString = convertToJsonString;
+    module2.exports = XMLParser;
   }
 });
 
-// node_modules/fast-xml-parser/src/json2xml.js
+// node_modules/fast-xml-parser/src/xmlbuilder/orderedJs2Xml.js
+var require_orderedJs2Xml = __commonJS({
+  "node_modules/fast-xml-parser/src/xmlbuilder/orderedJs2Xml.js"(exports, module2) {
+    var EOL = "\n";
+    function toXml(jArray, options) {
+      let indentation = "";
+      if (options.format && options.indentBy.length > 0) {
+        indentation = EOL;
+      }
+      return arrToStr(jArray, options, "", indentation);
+    }
+    function arrToStr(arr, options, jPath, indentation) {
+      let xmlStr = "";
+      let isPreviousElementTag = false;
+      for (let i2 = 0; i2 < arr.length; i2++) {
+        const tagObj = arr[i2];
+        const tagName15 = propName(tagObj);
+        let newJPath = "";
+        if (jPath.length === 0)
+          newJPath = tagName15;
+        else
+          newJPath = `${jPath}.${tagName15}`;
+        if (tagName15 === options.textNodeName) {
+          let tagText = tagObj[tagName15];
+          if (!isStopNode(newJPath, options)) {
+            tagText = options.tagValueProcessor(tagName15, tagText);
+            tagText = replaceEntitiesValue(tagText, options);
+          }
+          if (isPreviousElementTag) {
+            xmlStr += indentation;
+          }
+          xmlStr += tagText;
+          isPreviousElementTag = false;
+          continue;
+        } else if (tagName15 === options.cdataPropName) {
+          if (isPreviousElementTag) {
+            xmlStr += indentation;
+          }
+          xmlStr += `<![CDATA[${tagObj[tagName15][0][options.textNodeName]}]]>`;
+          isPreviousElementTag = false;
+          continue;
+        } else if (tagName15 === options.commentPropName) {
+          xmlStr += indentation + `<!--${tagObj[tagName15][0][options.textNodeName]}-->`;
+          isPreviousElementTag = true;
+          continue;
+        } else if (tagName15[0] === "?") {
+          const attStr2 = attr_to_str(tagObj[":@"], options);
+          const tempInd = tagName15 === "?xml" ? "" : indentation;
+          let piTextNodeName = tagObj[tagName15][0][options.textNodeName];
+          piTextNodeName = piTextNodeName.length !== 0 ? " " + piTextNodeName : "";
+          xmlStr += tempInd + `<${tagName15}${piTextNodeName}${attStr2}?>`;
+          isPreviousElementTag = true;
+          continue;
+        }
+        let newIdentation = indentation;
+        if (newIdentation !== "") {
+          newIdentation += options.indentBy;
+        }
+        const attStr = attr_to_str(tagObj[":@"], options);
+        const tagStart = indentation + `<${tagName15}${attStr}`;
+        const tagValue = arrToStr(tagObj[tagName15], options, newJPath, newIdentation);
+        if (options.unpairedTags.indexOf(tagName15) !== -1) {
+          if (options.suppressUnpairedNode)
+            xmlStr += tagStart + ">";
+          else
+            xmlStr += tagStart + "/>";
+        } else if ((!tagValue || tagValue.length === 0) && options.suppressEmptyNode) {
+          xmlStr += tagStart + "/>";
+        } else if (tagValue && tagValue.endsWith(">")) {
+          xmlStr += tagStart + `>${tagValue}${indentation}</${tagName15}>`;
+        } else {
+          xmlStr += tagStart + ">";
+          if (tagValue && indentation !== "" && (tagValue.includes("/>") || tagValue.includes("</"))) {
+            xmlStr += indentation + options.indentBy + tagValue + indentation;
+          } else {
+            xmlStr += tagValue;
+          }
+          xmlStr += `</${tagName15}>`;
+        }
+        isPreviousElementTag = true;
+      }
+      return xmlStr;
+    }
+    function propName(obj) {
+      const keys2 = Object.keys(obj);
+      for (let i2 = 0; i2 < keys2.length; i2++) {
+        const key2 = keys2[i2];
+        if (key2 !== ":@")
+          return key2;
+      }
+    }
+    function attr_to_str(attrMap, options) {
+      let attrStr = "";
+      if (attrMap && !options.ignoreAttributes) {
+        for (let attr in attrMap) {
+          let attrVal = options.attributeValueProcessor(attr, attrMap[attr]);
+          attrVal = replaceEntitiesValue(attrVal, options);
+          if (attrVal === true && options.suppressBooleanAttributes) {
+            attrStr += ` ${attr.substr(options.attributeNamePrefix.length)}`;
+          } else {
+            attrStr += ` ${attr.substr(options.attributeNamePrefix.length)}="${attrVal}"`;
+          }
+        }
+      }
+      return attrStr;
+    }
+    function isStopNode(jPath, options) {
+      jPath = jPath.substr(0, jPath.length - options.textNodeName.length - 1);
+      let tagName15 = jPath.substr(jPath.lastIndexOf(".") + 1);
+      for (let index in options.stopNodes) {
+        if (options.stopNodes[index] === jPath || options.stopNodes[index] === "*." + tagName15)
+          return true;
+      }
+      return false;
+    }
+    function replaceEntitiesValue(textValue, options) {
+      if (textValue && textValue.length > 0 && options.processEntities) {
+        for (let i2 = 0; i2 < options.entities.length; i2++) {
+          const entity = options.entities[i2];
+          textValue = textValue.replace(entity.regex, entity.val);
+        }
+      }
+      return textValue;
+    }
+    module2.exports = toXml;
+  }
+});
+
+// node_modules/fast-xml-parser/src/xmlbuilder/json2xml.js
 var require_json2xml = __commonJS({
-  "node_modules/fast-xml-parser/src/json2xml.js"(exports, module2) {
+  "node_modules/fast-xml-parser/src/xmlbuilder/json2xml.js"(exports, module2) {
     "use strict";
-    var buildOptions = require_util().buildOptions;
+    var buildFromOrderedJs = require_orderedJs2Xml();
     var defaultOptions = {
       attributeNamePrefix: "@_",
-      attrNodeName: false,
+      attributesGroupName: false,
       textNodeName: "#text",
       ignoreAttributes: true,
-      cdataTagName: false,
-      cdataPositionChar: "\\c",
+      cdataPropName: false,
       format: false,
       indentBy: "  ",
-      supressEmptyNode: false,
-      tagValueProcessor: function(a) {
+      suppressEmptyNode: false,
+      suppressUnpairedNode: true,
+      suppressBooleanAttributes: true,
+      tagValueProcessor: function(key2, a) {
         return a;
       },
-      attrValueProcessor: function(a) {
+      attributeValueProcessor: function(attrName, a) {
         return a;
-      }
+      },
+      preserveOrder: false,
+      commentPropName: false,
+      unpairedTags: [],
+      entities: [
+        { regex: new RegExp("&", "g"), val: "&amp;" },
+        { regex: new RegExp(">", "g"), val: "&gt;" },
+        { regex: new RegExp("<", "g"), val: "&lt;" },
+        { regex: new RegExp("'", "g"), val: "&apos;" },
+        { regex: new RegExp('"', "g"), val: "&quot;" }
+      ],
+      processEntities: true,
+      stopNodes: [],
+      oneListGroup: false
     };
-    var props = [
-      "attributeNamePrefix",
-      "attrNodeName",
-      "textNodeName",
-      "ignoreAttributes",
-      "cdataTagName",
-      "cdataPositionChar",
-      "format",
-      "indentBy",
-      "supressEmptyNode",
-      "tagValueProcessor",
-      "attrValueProcessor",
-      "rootNodeName"
-    ];
-    function Parser2(options) {
-      this.options = buildOptions(options, defaultOptions, props);
-      if (this.options.ignoreAttributes || this.options.attrNodeName) {
+    function Builder(options) {
+      this.options = Object.assign({}, defaultOptions, options);
+      if (this.options.ignoreAttributes || this.options.attributesGroupName) {
         this.isAttribute = function() {
           return false;
         };
@@ -5245,15 +17177,6 @@ var require_json2xml = __commonJS({
         this.attrPrefixLen = this.options.attributeNamePrefix.length;
         this.isAttribute = isAttribute;
       }
-      if (this.options.cdataTagName) {
-        this.isCDATA = isCDATA;
-      } else {
-        this.isCDATA = function() {
-          return false;
-        };
-      }
-      this.replaceCDATAstr = replaceCDATAstr;
-      this.replaceCDATAarr = replaceCDATAarr;
       this.processTextOrObjNode = processTextOrObjNode;
       if (this.options.format) {
         this.indentate = indentate;
@@ -5266,140 +17189,159 @@ var require_json2xml = __commonJS({
         this.tagEndChar = ">";
         this.newLine = "";
       }
-      if (this.options.supressEmptyNode) {
-        this.buildTextNode = buildEmptyTextNode;
-        this.buildObjNode = buildEmptyObjNode;
-      } else {
-        this.buildTextNode = buildTextValNode;
-        this.buildObjNode = buildObjectNode;
-      }
-      this.buildTextValNode = buildTextValNode;
-      this.buildObjectNode = buildObjectNode;
     }
-    Parser2.prototype.parse = function(jObj) {
-      if (Array.isArray(jObj) && this.options.rootNodeName && this.options.rootNodeName.length > 1) {
-        jObj = {
-          [this.options.rootNodeName]: jObj
-        };
+    Builder.prototype.build = function(jObj) {
+      if (this.options.preserveOrder) {
+        return buildFromOrderedJs(jObj, this.options);
+      } else {
+        if (Array.isArray(jObj) && this.options.arrayNodeName && this.options.arrayNodeName.length > 1) {
+          jObj = {
+            [this.options.arrayNodeName]: jObj
+          };
+        }
+        return this.j2x(jObj, 0).val;
       }
-      return this.j2x(jObj, 0).val;
     };
-    Parser2.prototype.j2x = function(jObj, level) {
+    Builder.prototype.j2x = function(jObj, level) {
       let attrStr = "";
-      let val = "";
+      let val2 = "";
       for (let key2 in jObj) {
         if (typeof jObj[key2] === "undefined") {
         } else if (jObj[key2] === null) {
-          val += this.indentate(level) + "<" + key2 + "/" + this.tagEndChar;
+          if (key2[0] === "?")
+            val2 += this.indentate(level) + "<" + key2 + "?" + this.tagEndChar;
+          else
+            val2 += this.indentate(level) + "<" + key2 + "/" + this.tagEndChar;
         } else if (jObj[key2] instanceof Date) {
-          val += this.buildTextNode(jObj[key2], key2, "", level);
+          val2 += this.buildTextValNode(jObj[key2], key2, "", level);
         } else if (typeof jObj[key2] !== "object") {
           const attr = this.isAttribute(key2);
           if (attr) {
-            attrStr += " " + attr + '="' + this.options.attrValueProcessor("" + jObj[key2]) + '"';
-          } else if (this.isCDATA(key2)) {
-            if (jObj[this.options.textNodeName]) {
-              val += this.replaceCDATAstr(jObj[this.options.textNodeName], jObj[key2]);
-            } else {
-              val += this.replaceCDATAstr("", jObj[key2]);
-            }
+            attrStr += this.buildAttrPairStr(attr, "" + jObj[key2]);
           } else {
             if (key2 === this.options.textNodeName) {
-              if (jObj[this.options.cdataTagName]) {
-              } else {
-                val += this.options.tagValueProcessor("" + jObj[key2]);
-              }
+              let newval = this.options.tagValueProcessor(key2, "" + jObj[key2]);
+              val2 += this.replaceEntitiesValue(newval);
             } else {
-              val += this.buildTextNode(jObj[key2], key2, "", level);
+              val2 += this.buildTextValNode(jObj[key2], key2, "", level);
             }
           }
         } else if (Array.isArray(jObj[key2])) {
-          if (this.isCDATA(key2)) {
-            val += this.indentate(level);
-            if (jObj[this.options.textNodeName]) {
-              val += this.replaceCDATAarr(jObj[this.options.textNodeName], jObj[key2]);
-            } else {
-              val += this.replaceCDATAarr("", jObj[key2]);
-            }
-          } else {
-            const arrLen = jObj[key2].length;
-            for (let j = 0; j < arrLen; j++) {
-              const item = jObj[key2][j];
-              if (typeof item === "undefined") {
-              } else if (item === null) {
-                val += this.indentate(level) + "<" + key2 + "/" + this.tagEndChar;
-              } else if (typeof item === "object") {
-                val += this.processTextOrObjNode(item, key2, level);
+          const arrLen = jObj[key2].length;
+          let listTagVal = "";
+          for (let j = 0; j < arrLen; j++) {
+            const item = jObj[key2][j];
+            if (typeof item === "undefined") {
+            } else if (item === null) {
+              if (key2[0] === "?")
+                val2 += this.indentate(level) + "<" + key2 + "?" + this.tagEndChar;
+              else
+                val2 += this.indentate(level) + "<" + key2 + "/" + this.tagEndChar;
+            } else if (typeof item === "object") {
+              if (this.options.oneListGroup) {
+                listTagVal += this.j2x(item, level + 1).val;
               } else {
-                val += this.buildTextNode(item, key2, "", level);
+                listTagVal += this.processTextOrObjNode(item, key2, level);
               }
+            } else {
+              listTagVal += this.buildTextValNode(item, key2, "", level);
             }
           }
+          if (this.options.oneListGroup) {
+            listTagVal = this.buildObjectNode(listTagVal, key2, "", level);
+          }
+          val2 += listTagVal;
         } else {
-          if (this.options.attrNodeName && key2 === this.options.attrNodeName) {
+          if (this.options.attributesGroupName && key2 === this.options.attributesGroupName) {
             const Ks = Object.keys(jObj[key2]);
             const L = Ks.length;
             for (let j = 0; j < L; j++) {
-              attrStr += " " + Ks[j] + '="' + this.options.attrValueProcessor("" + jObj[key2][Ks[j]]) + '"';
+              attrStr += this.buildAttrPairStr(Ks[j], "" + jObj[key2][Ks[j]]);
             }
           } else {
-            val += this.processTextOrObjNode(jObj[key2], key2, level);
+            val2 += this.processTextOrObjNode(jObj[key2], key2, level);
           }
         }
       }
-      return { attrStr, val };
+      return { attrStr, val: val2 };
+    };
+    Builder.prototype.buildAttrPairStr = function(attrName, val2) {
+      val2 = this.options.attributeValueProcessor(attrName, "" + val2);
+      val2 = this.replaceEntitiesValue(val2);
+      if (this.options.suppressBooleanAttributes && val2 === "true") {
+        return " " + attrName;
+      } else
+        return " " + attrName + '="' + val2 + '"';
     };
     function processTextOrObjNode(object, key2, level) {
       const result = this.j2x(object, level + 1);
       if (object[this.options.textNodeName] !== void 0 && Object.keys(object).length === 1) {
-        return this.buildTextNode(result.val, key2, result.attrStr, level);
+        return this.buildTextValNode(object[this.options.textNodeName], key2, result.attrStr, level);
       } else {
-        return this.buildObjNode(result.val, key2, result.attrStr, level);
+        return this.buildObjectNode(result.val, key2, result.attrStr, level);
       }
     }
-    function replaceCDATAstr(str, cdata) {
-      str = this.options.tagValueProcessor("" + str);
-      if (this.options.cdataPositionChar === "" || str === "") {
-        return str + "<![CDATA[" + cdata + "]]" + this.tagEndChar;
-      } else {
-        return str.replace(this.options.cdataPositionChar, "<![CDATA[" + cdata + "]]" + this.tagEndChar);
-      }
-    }
-    function replaceCDATAarr(str, cdata) {
-      str = this.options.tagValueProcessor("" + str);
-      if (this.options.cdataPositionChar === "" || str === "") {
-        return str + "<![CDATA[" + cdata.join("]]><![CDATA[") + "]]" + this.tagEndChar;
-      } else {
-        for (let v in cdata) {
-          str = str.replace(this.options.cdataPositionChar, "<![CDATA[" + cdata[v] + "]]>");
+    Builder.prototype.buildObjectNode = function(val2, key2, attrStr, level) {
+      if (val2 === "") {
+        if (key2[0] === "?")
+          return this.indentate(level) + "<" + key2 + attrStr + "?" + this.tagEndChar;
+        else {
+          return this.indentate(level) + "<" + key2 + attrStr + this.closeTag(key2) + this.tagEndChar;
         }
-        return str + this.newLine;
-      }
-    }
-    function buildObjectNode(val, key2, attrStr, level) {
-      if (attrStr && val.indexOf("<") === -1) {
-        return this.indentate(level) + "<" + key2 + attrStr + ">" + val + "</" + key2 + this.tagEndChar;
       } else {
-        return this.indentate(level) + "<" + key2 + attrStr + this.tagEndChar + val + this.indentate(level) + "</" + key2 + this.tagEndChar;
+        let tagEndExp = "</" + key2 + this.tagEndChar;
+        let piClosingChar = "";
+        if (key2[0] === "?") {
+          piClosingChar = "?";
+          tagEndExp = "";
+        }
+        if (attrStr && val2.indexOf("<") === -1) {
+          return this.indentate(level) + "<" + key2 + attrStr + piClosingChar + ">" + val2 + tagEndExp;
+        } else if (this.options.commentPropName !== false && key2 === this.options.commentPropName && piClosingChar.length === 0) {
+          return this.indentate(level) + `<!--${val2}-->` + this.newLine;
+        } else {
+          return this.indentate(level) + "<" + key2 + attrStr + piClosingChar + this.tagEndChar + val2 + this.indentate(level) + tagEndExp;
+        }
       }
-    }
-    function buildEmptyObjNode(val, key2, attrStr, level) {
-      if (val !== "") {
-        return this.buildObjectNode(val, key2, attrStr, level);
+    };
+    Builder.prototype.closeTag = function(key2) {
+      let closeTag = "";
+      if (this.options.unpairedTags.indexOf(key2) !== -1) {
+        if (!this.options.suppressUnpairedNode)
+          closeTag = "/";
+      } else if (this.options.suppressEmptyNode) {
+        closeTag = "/";
       } else {
-        return this.indentate(level) + "<" + key2 + attrStr + "/" + this.tagEndChar;
+        closeTag = `></${key2}`;
       }
-    }
-    function buildTextValNode(val, key2, attrStr, level) {
-      return this.indentate(level) + "<" + key2 + attrStr + ">" + this.options.tagValueProcessor(val) + "</" + key2 + this.tagEndChar;
-    }
-    function buildEmptyTextNode(val, key2, attrStr, level) {
-      if (val !== "") {
-        return this.buildTextValNode(val, key2, attrStr, level);
+      return closeTag;
+    };
+    Builder.prototype.buildTextValNode = function(val2, key2, attrStr, level) {
+      if (this.options.cdataPropName !== false && key2 === this.options.cdataPropName) {
+        return this.indentate(level) + `<![CDATA[${val2}]]>` + this.newLine;
+      } else if (this.options.commentPropName !== false && key2 === this.options.commentPropName) {
+        return this.indentate(level) + `<!--${val2}-->` + this.newLine;
+      } else if (key2[0] === "?") {
+        return this.indentate(level) + "<" + key2 + attrStr + "?" + this.tagEndChar;
       } else {
-        return this.indentate(level) + "<" + key2 + attrStr + "/" + this.tagEndChar;
+        let textValue = this.options.tagValueProcessor(key2, val2);
+        textValue = this.replaceEntitiesValue(textValue);
+        if (textValue === "") {
+          return this.indentate(level) + "<" + key2 + attrStr + this.closeTag(key2) + this.tagEndChar;
+        } else {
+          return this.indentate(level) + "<" + key2 + attrStr + ">" + textValue + "</" + key2 + this.tagEndChar;
+        }
       }
-    }
+    };
+    Builder.prototype.replaceEntitiesValue = function(textValue) {
+      if (textValue && textValue.length > 0 && this.options.processEntities) {
+        for (let i2 = 0; i2 < this.options.entities.length; i2++) {
+          const entity = this.options.entities[i2];
+          textValue = textValue.replace(entity.regex, entity.val);
+        }
+      }
+      return textValue;
+    };
     function indentate(level) {
       return this.options.indentBy.repeat(level);
     }
@@ -5410,110 +17352,82 @@ var require_json2xml = __commonJS({
         return false;
       }
     }
-    function isCDATA(name) {
-      return name === this.options.cdataTagName;
-    }
-    module2.exports = Parser2;
+    module2.exports = Builder;
   }
 });
 
-// node_modules/fast-xml-parser/src/parser.js
-var require_parser = __commonJS({
-  "node_modules/fast-xml-parser/src/parser.js"(exports) {
+// node_modules/fast-xml-parser/src/fxp.js
+var require_fxp = __commonJS({
+  "node_modules/fast-xml-parser/src/fxp.js"(exports, module2) {
     "use strict";
-    var nodeToJson = require_node2json();
-    var xmlToNodeobj = require_xmlstr2xmlnode();
-    var x2xmlnode = require_xmlstr2xmlnode();
-    var buildOptions = require_util().buildOptions;
-    var validator = require_validator2();
-    exports.parse = function(xmlData, givenOptions = {}, validationOption) {
-      if (validationOption) {
-        if (validationOption === true)
-          validationOption = {};
-        const result = validator.validate(xmlData, validationOption);
-        if (result !== true) {
-          throw Error(result.err.msg);
-        }
-      }
-      if (givenOptions.parseTrueNumberOnly && givenOptions.parseNodeValue !== false && !givenOptions.numParseOptions) {
-        givenOptions.numParseOptions = {
-          leadingZeros: false
-        };
-      }
-      let options = buildOptions(givenOptions, x2xmlnode.defaultOptions, x2xmlnode.props);
-      const traversableObj = xmlToNodeobj.getTraversalObj(xmlData, options);
-      return nodeToJson.convertToJson(traversableObj, options);
-    };
-    exports.convertTonimn = require_nimndata().convert2nimn;
-    exports.getTraversalObj = xmlToNodeobj.getTraversalObj;
-    exports.convertToJson = nodeToJson.convertToJson;
-    exports.convertToJsonString = require_node2json_str().convertToJsonString;
-    exports.validate = validator.validate;
-    exports.j2xParser = require_json2xml();
-    exports.parseToNimn = function(xmlData, schema, options) {
-      return exports.convertTonimn(exports.getTraversalObj(xmlData, options), schema, options);
+    var validator = require_validator();
+    var XMLParser = require_XMLParser();
+    var XMLBuilder = require_json2xml();
+    module2.exports = {
+      XMLParser,
+      XMLValidator: validator,
+      XMLBuilder
     };
   }
 });
 
 // node_modules/rss-to-json/dist/index.js
-var require_dist = __commonJS({
+var require_dist2 = __commonJS({
   "node_modules/rss-to-json/dist/index.js"(exports) {
     (() => {
       "use strict";
-      var e2 = { 306: (e3, t3, a2) => {
+      var e2 = { 306: (e3, t3, r3) => {
         Object.defineProperty(t3, "__esModule", { value: true });
-        const r3 = a2(861), i3 = a2(376);
+        const a2 = r3(861), i3 = r3(167);
         t3.default = async (e4, t4) => {
-          var a3, n2;
+          var r4, n2;
           if (!/(^http(s?):\/\/[^\s$.?#].[^\s]*)/i.test(e4))
             return null;
-          const { data: s2 } = await i3.default(e4, t4), u = r3.parse(s2, { attributeNamePrefix: "", textNodeName: "$text", ignoreAttributes: false });
+          const { data: s2 } = await (0, i3.default)(e4, t4), u = new a2.XMLParser({ attributeNamePrefix: "", textNodeName: "$text", ignoreAttributes: false }).parse(s2);
           let o = u.rss && u.rss.channel ? u.rss.channel : u.feed;
           Array.isArray(o) && (o = o[0]);
-          const d = { title: (a3 = o.title) !== null && a3 !== void 0 ? a3 : "", description: (n2 = o.description) !== null && n2 !== void 0 ? n2 : "", link: o.link && o.link.href ? o.link.href : o.link, image: o.image ? o.image.url : o["itunes:image"] ? o["itunes:image"].href : "", category: o.category || [], items: [] };
-          let l = o.item || o.entry;
+          const d = { title: (r4 = o.title) !== null && r4 !== void 0 ? r4 : "", description: (n2 = o.description) !== null && n2 !== void 0 ? n2 : "", link: o.link && o.link.href ? o.link.href : o.link, image: o.image ? o.image.url : o["itunes:image"] ? o["itunes:image"].href : "", category: o.category || [], items: [] };
+          let l = o.item || o.entry || [];
           l && !Array.isArray(l) && (l = [l]);
           for (let e5 = 0; e5 < l.length; e5++) {
-            const t5 = l[e5];
-            let a4 = {}, r4 = { id: t5.guid && t5.guid.$t ? t5.guid.$t : t5.id, title: t5.title && t5.title.$text ? t5.title.$text : t5.title, description: t5.summary && t5.summary.$text ? t5.summary.$text : t5.description, link: t5.link && t5.link.href ? t5.link.href : t5.link, author: t5.author && t5.author.name ? t5.author.name : t5["dc:creator"], published: t5.created ? Date.parse(t5.created) : t5.pubDate ? Date.parse(t5.pubDate) : Date.now(), created: t5.updated ? Date.parse(t5.updated) : t5.pubDate ? Date.parse(t5.pubDate) : t5.created ? Date.parse(t5.created) : Date.now(), category: t5.category || [], content: t5.content && t5.content.$text ? t5.content.$text : t5["content:encoded"], enclosures: t5.enclosure ? Array.isArray(t5.enclosure) ? t5.enclosure : [t5.enclosure] : [] };
+            const t5 = l[e5], r5 = {}, a3 = { id: t5.guid && t5.guid.$text ? t5.guid.$text : t5.id, title: t5.title && t5.title.$text ? t5.title.$text : t5.title, description: t5.summary && t5.summary.$text ? t5.summary.$text : t5.description, link: t5.link && t5.link.href ? t5.link.href : t5.link, author: t5.author && t5.author.name ? t5.author.name : t5["dc:creator"], published: t5.created ? Date.parse(t5.created) : t5.pubDate ? Date.parse(t5.pubDate) : Date.now(), created: t5.updated ? Date.parse(t5.updated) : t5.pubDate ? Date.parse(t5.pubDate) : t5.created ? Date.parse(t5.created) : Date.now(), category: t5.category || [], content: t5.content && t5.content.$text ? t5.content.$text : t5["content:encoded"], enclosures: t5.enclosure ? Array.isArray(t5.enclosure) ? t5.enclosure : [t5.enclosure] : [] };
             ["content:encoded", "podcast:transcript", "itunes:summary", "itunes:author", "itunes:explicit", "itunes:duration", "itunes:season", "itunes:episode", "itunes:episodeType", "itunes:image"].forEach((e6) => {
-              t5[e6] && (r4[e6.replace(":", "_")] = t5[e6]);
-            }), t5["media:thumbnail"] && (Object.assign(a4, { thumbnail: t5["media:thumbnail"] }), r4.enclosures.push(t5["media:thumbnail"])), t5["media:content"] && (Object.assign(a4, { thumbnail: t5["media:content"] }), r4.enclosures.push(t5["media:content"])), t5["media:group"] && (t5["media:group"]["media:title"] && (r4.title = t5["media:group"]["media:title"]), t5["media:group"]["media:description"] && (r4.description = t5["media:group"]["media:description"]), t5["media:group"]["media:thumbnail"] && r4.enclosures.push(t5["media:group"]["media:thumbnail"].url)), Object.assign(r4, { media: a4 }), d.items.push(r4);
+              t5[e6] && (a3[e6.replace(":", "_")] = t5[e6]);
+            }), t5["media:thumbnail"] && (Object.assign(r5, { thumbnail: t5["media:thumbnail"] }), a3.enclosures.push(t5["media:thumbnail"])), t5["media:content"] && (Object.assign(r5, { thumbnail: t5["media:content"] }), a3.enclosures.push(t5["media:content"])), t5["media:group"] && (t5["media:group"]["media:title"] && (a3.title = t5["media:group"]["media:title"]), t5["media:group"]["media:description"] && (a3.description = t5["media:group"]["media:description"]), t5["media:group"]["media:thumbnail"] && a3.enclosures.push(t5["media:group"]["media:thumbnail"].url)), Object.assign(a3, { media: r5 }), d.items.push(a3);
           }
           return d;
         };
-      }, 376: (e3) => {
-        e3.exports = require_axios2();
+      }, 167: (e3) => {
+        e3.exports = require_axios();
       }, 861: (e3) => {
-        e3.exports = require_parser();
+        e3.exports = require_fxp();
       } }, t2 = {};
-      function a(r3) {
-        var i3 = t2[r3];
+      function r2(a2) {
+        var i3 = t2[a2];
         if (i3 !== void 0)
           return i3.exports;
-        var n2 = t2[r3] = { exports: {} };
-        return e2[r3](n2, n2.exports, a), n2.exports;
+        var n2 = t2[a2] = { exports: {} };
+        return e2[a2](n2, n2.exports, r2), n2.exports;
       }
-      var r2 = {};
+      var a = {};
       (() => {
-        var e3 = r2;
+        var e3 = a;
         Object.defineProperty(e3, "__esModule", { value: true }), e3.Parse = e3.parse = void 0;
-        const t3 = a(306);
+        const t3 = r2(306);
         e3.parse = t3.default;
         const i3 = t3.default;
         e3.Parse = i3, e3.default = t3.default;
       })();
       var i2 = exports;
-      for (var n in r2)
-        i2[n] = r2[n];
-      r2.__esModule && Object.defineProperty(i2, "__esModule", { value: true });
+      for (var n in a)
+        i2[n] = a[n];
+      a.__esModule && Object.defineProperty(i2, "__esModule", { value: true });
     })();
   }
 });
 
 // node_modules/domelementtype/lib/index.js
-var require_lib = __commonJS({
+var require_lib2 = __commonJS({
   "node_modules/domelementtype/lib/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -5585,7 +17499,7 @@ var require_node2 = __commonJS({
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.cloneNode = exports.hasChildren = exports.isDocument = exports.isDirective = exports.isComment = exports.isText = exports.isCDATA = exports.isTag = exports.Element = exports.Document = exports.NodeWithChildren = exports.ProcessingInstruction = exports.Comment = exports.Text = exports.DataNode = exports.Node = void 0;
-    var domelementtype_1 = require_lib();
+    var domelementtype_1 = require_lib2();
     var nodeTypes = /* @__PURE__ */ new Map([
       [domelementtype_1.ElementType.Tag, 1],
       [domelementtype_1.ElementType.Script, 1],
@@ -5887,7 +17801,7 @@ var require_node2 = __commonJS({
 });
 
 // node_modules/domhandler/lib/index.js
-var require_lib2 = __commonJS({
+var require_lib3 = __commonJS({
   "node_modules/domhandler/lib/index.js"(exports) {
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m2, k, k2) {
@@ -5908,7 +17822,7 @@ var require_lib2 = __commonJS({
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.DomHandler = void 0;
-    var domelementtype_1 = require_lib();
+    var domelementtype_1 = require_lib2();
     var node_1 = require_node2();
     __exportStar(require_node2(), exports);
     var reWhitespace = /\s+/g;
@@ -7388,13 +19302,13 @@ ${treeifyArray(node.cont)}`;
       const len = array.length;
       const results = new Array(len);
       for (let i2 = 0; i2 < len; i2++) {
-        const [selectorString, val] = array[i2];
+        const [selectorString, val2] = array[i2];
         const ast = preprocess(parseley__namespace.parse1(selectorString));
         results[i2] = {
           ast,
           terminal: {
             type: "terminal",
-            valueContainer: { index: i2, value: val, specificity: ast.specificity }
+            valueContainer: { index: i2, value: val2, specificity: ast.specificity }
           }
         };
       }
@@ -7756,7 +19670,7 @@ var require_hp2_builder = __commonJS({
   "node_modules/@selderee/plugin-htmlparser2/lib/hp2-builder.cjs"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var domhandler = require_lib2();
+    var domhandler = require_lib3();
     var selderee = require_selderee();
     function hp2Builder(nodes) {
       return new selderee.Picker(handleArray(nodes));
@@ -7871,8 +19785,8 @@ var require_cjs = __commonJS({
     function isReactElement(value) {
       return value.$$typeof === REACT_ELEMENT_TYPE;
     }
-    function emptyTarget(val) {
-      return Array.isArray(val) ? [] : {};
+    function emptyTarget(val2) {
+      return Array.isArray(val2) ? [] : {};
     }
     function cloneUnlessOtherwiseSpecified(value, options) {
       return options.clone !== false && options.isMergeableObject(value) ? deepmerge(emptyTarget(value), value, options) : value;
@@ -9445,7 +21359,7 @@ var require_encode = __commonJS({
 });
 
 // node_modules/entities/lib/index.js
-var require_lib3 = __commonJS({
+var require_lib4 = __commonJS({
   "node_modules/entities/lib/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9624,7 +21538,7 @@ var require_foreignNames = __commonJS({
 });
 
 // node_modules/dom-serializer/lib/index.js
-var require_lib4 = __commonJS({
+var require_lib5 = __commonJS({
   "node_modules/dom-serializer/lib/index.js"(exports) {
     "use strict";
     var __assign = exports && exports.__assign || function() {
@@ -9668,8 +21582,8 @@ var require_lib4 = __commonJS({
       return result;
     };
     Object.defineProperty(exports, "__esModule", { value: true });
-    var ElementType = __importStar(require_lib());
-    var entities_1 = require_lib3();
+    var ElementType = __importStar(require_lib2());
+    var entities_1 = require_lib4();
     var foreignNames_1 = require_foreignNames();
     var unencodedElements = /* @__PURE__ */ new Set([
       "style",
@@ -9811,7 +21725,7 @@ var require_lib4 = __commonJS({
 });
 
 // node_modules/domutils/lib/stringify.js
-var require_stringify = __commonJS({
+var require_stringify2 = __commonJS({
   "node_modules/domutils/lib/stringify.js"(exports) {
     "use strict";
     var __importDefault = exports && exports.__importDefault || function(mod) {
@@ -9819,9 +21733,9 @@ var require_stringify = __commonJS({
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.innerText = exports.textContent = exports.getText = exports.getInnerHTML = exports.getOuterHTML = void 0;
-    var domhandler_1 = require_lib2();
-    var dom_serializer_1 = __importDefault(require_lib4());
-    var domelementtype_1 = require_lib();
+    var domhandler_1 = require_lib3();
+    var dom_serializer_1 = __importDefault(require_lib5());
+    var domelementtype_1 = require_lib2();
     function getOuterHTML(node, options) {
       return (0, dom_serializer_1.default)(node, options);
     }
@@ -9875,7 +21789,7 @@ var require_traversal = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.prevElementSibling = exports.nextElementSibling = exports.getName = exports.hasAttrib = exports.getAttributeValue = exports.getSiblings = exports.getParent = exports.getChildren = void 0;
-    var domhandler_1 = require_lib2();
+    var domhandler_1 = require_lib3();
     var emptyArray = [];
     function getChildren2(elem) {
       var _a;
@@ -10039,7 +21953,7 @@ var require_querying = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.findAll = exports.existsOne = exports.findOne = exports.findOneChild = exports.find = exports.filter = void 0;
-    var domhandler_1 = require_lib2();
+    var domhandler_1 = require_lib3();
     function filter(test, node, recurse, limit) {
       if (recurse === void 0) {
         recurse = true;
@@ -10125,7 +22039,7 @@ var require_legacy2 = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getElementsByTagType = exports.getElementsByTagName = exports.getElementById = exports.getElements = exports.testElement = void 0;
-    var domhandler_1 = require_lib2();
+    var domhandler_1 = require_lib3();
     var querying_1 = require_querying();
     var Checks = {
       tag_name: function(name) {
@@ -10234,7 +22148,7 @@ var require_helpers = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.uniqueSort = exports.compareDocumentPosition = exports.removeSubsets = void 0;
-    var domhandler_1 = require_lib2();
+    var domhandler_1 = require_lib3();
     function removeSubsets2(nodes) {
       var idx = nodes.length;
       while (--idx >= 0) {
@@ -10318,7 +22232,7 @@ var require_feeds = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getFeed = void 0;
-    var stringify_1 = require_stringify();
+    var stringify_1 = require_stringify2();
     var legacy_1 = require_legacy2();
     function getFeed2(doc) {
       var feedRoot = getOneElement(isValidFeed, doc);
@@ -10443,9 +22357,9 @@ var require_feeds = __commonJS({
       if (recurse === void 0) {
         recurse = false;
       }
-      var val = fetch2(tagName15, where, recurse);
-      if (val)
-        obj[prop2] = val;
+      var val2 = fetch2(tagName15, where, recurse);
+      if (val2)
+        obj[prop2] = val2;
     }
     function isValidFeed(value) {
       return value === "rss" || value === "feed" || value === "rdf:RDF";
@@ -10454,7 +22368,7 @@ var require_feeds = __commonJS({
 });
 
 // node_modules/domutils/lib/index.js
-var require_lib5 = __commonJS({
+var require_lib6 = __commonJS({
   "node_modules/domutils/lib/index.js"(exports) {
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m2, k, k2) {
@@ -10475,14 +22389,14 @@ var require_lib5 = __commonJS({
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.hasChildren = exports.isDocument = exports.isComment = exports.isText = exports.isCDATA = exports.isTag = void 0;
-    __exportStar(require_stringify(), exports);
+    __exportStar(require_stringify2(), exports);
     __exportStar(require_traversal(), exports);
     __exportStar(require_manipulation(), exports);
     __exportStar(require_querying(), exports);
     __exportStar(require_legacy2(), exports);
     __exportStar(require_helpers(), exports);
     __exportStar(require_feeds(), exports);
-    var domhandler_1 = require_lib2();
+    var domhandler_1 = require_lib3();
     Object.defineProperty(exports, "isTag", { enumerable: true, get: function() {
       return domhandler_1.isTag;
     } });
@@ -10562,8 +22476,8 @@ var require_FeedHandler = __commonJS({
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.parseFeed = exports.FeedHandler = void 0;
-    var domhandler_1 = __importDefault(require_lib2());
-    var DomUtils = __importStar(require_lib5());
+    var domhandler_1 = __importDefault(require_lib3());
+    var DomUtils = __importStar(require_lib6());
     var Parser_1 = require_Parser();
     var FeedItemMediaMedium;
     (function(FeedItemMediaMedium2) {
@@ -10753,7 +22667,7 @@ var require_FeedHandler = __commonJS({
 });
 
 // node_modules/htmlparser2/lib/index.js
-var require_lib6 = __commonJS({
+var require_lib7 = __commonJS({
   "node_modules/htmlparser2/lib/index.js"(exports) {
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m2, k, k2) {
@@ -10798,7 +22712,7 @@ var require_lib6 = __commonJS({
     Object.defineProperty(exports, "Parser", { enumerable: true, get: function() {
       return Parser_1.Parser;
     } });
-    var domhandler_1 = require_lib2();
+    var domhandler_1 = require_lib3();
     Object.defineProperty(exports, "DomHandler", { enumerable: true, get: function() {
       return domhandler_1.DomHandler;
     } });
@@ -10824,10 +22738,10 @@ var require_lib6 = __commonJS({
     Object.defineProperty(exports, "Tokenizer", { enumerable: true, get: function() {
       return __importDefault(Tokenizer_1).default;
     } });
-    var ElementType = __importStar(require_lib());
+    var ElementType = __importStar(require_lib2());
     exports.ElementType = ElementType;
     __exportStar(require_FeedHandler(), exports);
-    exports.DomUtils = __importStar(require_lib5());
+    exports.DomUtils = __importStar(require_lib6());
     var FeedHandler_1 = require_FeedHandler();
     Object.defineProperty(exports, "RssHandler", { enumerable: true, get: function() {
       return FeedHandler_1.FeedHandler;
@@ -11752,7 +23666,7 @@ var require_html_to_text = __commonJS({
     var { hp2Builder } = require_hp2_builder();
     var merge = require_cjs();
     var he = require_he();
-    var htmlparser = require_lib6();
+    var htmlparser = require_lib7();
     var selderee = require_selderee();
     var { BlockTextBuilder } = require_block_text_builder();
     var defaultFormatters = require_formatter();
@@ -13250,8 +25164,8 @@ var require_FeedHandler2 = __commonJS({
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.parseFeed = exports.FeedHandler = exports.getFeed = void 0;
-    var domhandler_1 = __importDefault(require_lib2());
-    var domutils_1 = require_lib5();
+    var domhandler_1 = __importDefault(require_lib3());
+    var domutils_1 = require_lib6();
     Object.defineProperty(exports, "getFeed", { enumerable: true, get: function() {
       return domutils_1.getFeed;
     } });
@@ -13292,7 +25206,7 @@ var require_FeedHandler2 = __commonJS({
 });
 
 // node_modules/linkedom/node_modules/htmlparser2/lib/index.js
-var require_lib7 = __commonJS({
+var require_lib8 = __commonJS({
   "node_modules/linkedom/node_modules/htmlparser2/lib/index.js"(exports) {
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m2, k, k2) {
@@ -13337,7 +25251,7 @@ var require_lib7 = __commonJS({
     Object.defineProperty(exports, "Parser", { enumerable: true, get: function() {
       return Parser_1.Parser;
     } });
-    var domhandler_1 = require_lib2();
+    var domhandler_1 = require_lib3();
     Object.defineProperty(exports, "DomHandler", { enumerable: true, get: function() {
       return domhandler_1.DomHandler;
     } });
@@ -13363,10 +25277,10 @@ var require_lib7 = __commonJS({
     Object.defineProperty(exports, "Tokenizer", { enumerable: true, get: function() {
       return __importDefault(Tokenizer_1).default;
     } });
-    var ElementType = __importStar(require_lib());
+    var ElementType = __importStar(require_lib2());
     exports.ElementType = ElementType;
     __exportStar(require_FeedHandler2(), exports);
-    exports.DomUtils = __importStar(require_lib5());
+    exports.DomUtils = __importStar(require_lib6());
     var FeedHandler_1 = require_FeedHandler2();
     Object.defineProperty(exports, "RssHandler", { enumerable: true, get: function() {
       return FeedHandler_1.FeedHandler;
@@ -13403,7 +25317,7 @@ var require_boolbase = __commonJS({
 });
 
 // node_modules/css-what/lib/parse.js
-var require_parse = __commonJS({
+var require_parse2 = __commonJS({
   "node_modules/css-what/lib/parse.js"(exports) {
     "use strict";
     var __spreadArray = exports && exports.__spreadArray || function(to, from, pack) {
@@ -13776,7 +25690,7 @@ var require_parse = __commonJS({
 });
 
 // node_modules/css-what/lib/stringify.js
-var require_stringify2 = __commonJS({
+var require_stringify3 = __commonJS({
   "node_modules/css-what/lib/stringify.js"(exports) {
     "use strict";
     var __spreadArray = exports && exports.__spreadArray || function(to, from, pack) {
@@ -13874,7 +25788,7 @@ var require_stringify2 = __commonJS({
 });
 
 // node_modules/css-what/lib/index.js
-var require_lib8 = __commonJS({
+var require_lib9 = __commonJS({
   "node_modules/css-what/lib/index.js"(exports) {
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m2, k, k2) {
@@ -13898,12 +25812,12 @@ var require_lib8 = __commonJS({
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.stringify = exports.parse = void 0;
-    __exportStar(require_parse(), exports);
-    var parse_1 = require_parse();
+    __exportStar(require_parse2(), exports);
+    var parse_1 = require_parse2();
     Object.defineProperty(exports, "parse", { enumerable: true, get: function() {
       return __importDefault(parse_1).default;
     } });
-    var stringify_1 = require_stringify2();
+    var stringify_1 = require_stringify3();
     Object.defineProperty(exports, "stringify", { enumerable: true, get: function() {
       return __importDefault(stringify_1).default;
     } });
@@ -14152,7 +26066,7 @@ var require_attributes = __commonJS({
 });
 
 // node_modules/nth-check/lib/parse.js
-var require_parse2 = __commonJS({
+var require_parse3 = __commonJS({
   "node_modules/nth-check/lib/parse.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -14253,12 +26167,12 @@ var require_compile = __commonJS({
 });
 
 // node_modules/nth-check/lib/index.js
-var require_lib9 = __commonJS({
+var require_lib10 = __commonJS({
   "node_modules/nth-check/lib/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.compile = exports.parse = void 0;
-    var parse_1 = require_parse2();
+    var parse_1 = require_parse3();
     Object.defineProperty(exports, "parse", { enumerable: true, get: function() {
       return parse_1.parse;
     } });
@@ -14282,7 +26196,7 @@ var require_filters = __commonJS({
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.filters = void 0;
-    var nth_check_1 = __importDefault(require_lib9());
+    var nth_check_1 = __importDefault(require_lib10());
     var boolbase_1 = require_boolbase();
     function getChildFunc(next, adapter2) {
       return function(elem) {
@@ -14654,7 +26568,7 @@ var require_pseudo_selectors = __commonJS({
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.compilePseudoSelector = exports.aliases = exports.pseudos = exports.filters = void 0;
     var boolbase_1 = require_boolbase();
-    var css_what_1 = require_lib8();
+    var css_what_1 = require_lib9();
     var filters_1 = require_filters();
     Object.defineProperty(exports, "filters", { enumerable: true, get: function() {
       return filters_1.filters;
@@ -14808,7 +26722,7 @@ var require_compile2 = __commonJS({
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.compileToken = exports.compileUnsafe = exports.compile = void 0;
-    var css_what_1 = require_lib8();
+    var css_what_1 = require_lib9();
     var boolbase_1 = require_boolbase();
     var sort_1 = __importDefault(require_sort());
     var procedure_1 = require_procedure();
@@ -14899,7 +26813,7 @@ var require_compile2 = __commonJS({
 });
 
 // node_modules/css-select/lib/index.js
-var require_lib10 = __commonJS({
+var require_lib11 = __commonJS({
   "node_modules/css-select/lib/index.js"(exports) {
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m2, k, k2) {
@@ -14932,7 +26846,7 @@ var require_lib10 = __commonJS({
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.aliases = exports.pseudos = exports.filters = exports.is = exports.selectOne = exports.selectAll = exports.prepareContext = exports._compileToken = exports._compileUnsafe = exports.compile = void 0;
-    var DomUtils = __importStar(require_lib5());
+    var DomUtils = __importStar(require_lib6());
     var boolbase_1 = require_boolbase();
     var compile_1 = require_compile2();
     var subselects_1 = require_subselects();
@@ -15246,7 +27160,7 @@ var require_CSSStyleSheet = __commonJS({
       return result;
     };
     exports.CSSStyleSheet = CSSOM.CSSStyleSheet;
-    CSSOM.parse = require_parse3().parse;
+    CSSOM.parse = require_parse4().parse;
   }
 });
 
@@ -15886,7 +27800,7 @@ var require_CSSDocumentRule = __commonJS({
 });
 
 // node_modules/cssom/lib/parse.js
-var require_parse3 = __commonJS({
+var require_parse4 = __commonJS({
   "node_modules/cssom/lib/parse.js"(exports) {
     var CSSOM = {};
     CSSOM.parse = function parse4(token) {
@@ -16359,7 +28273,7 @@ var require_CSSStyleDeclaration = __commonJS({
       }
     };
     exports.CSSStyleDeclaration = CSSOM.CSSStyleDeclaration;
-    CSSOM.parse = require_parse3().parse;
+    CSSOM.parse = require_parse4().parse;
   }
 });
 
@@ -16420,7 +28334,7 @@ var require_clone = __commonJS({
 });
 
 // node_modules/cssom/lib/index.js
-var require_lib11 = __commonJS({
+var require_lib12 = __commonJS({
   "node_modules/cssom/lib/index.js"(exports) {
     "use strict";
     exports.CSSStyleDeclaration = require_CSSStyleDeclaration().CSSStyleDeclaration;
@@ -16442,7 +28356,7 @@ var require_lib11 = __commonJS({
     exports.CSSDocumentRule = require_CSSDocumentRule().CSSDocumentRule;
     exports.CSSValue = require_CSSValue().CSSValue;
     exports.CSSValueExpression = require_CSSValueExpression().CSSValueExpression;
-    exports.parse = require_parse3().parse;
+    exports.parse = require_parse4().parse;
     exports.clone = require_clone().clone;
   }
 });
@@ -23849,9 +35763,9 @@ var require_streams = __commonJS({
       }
     }
     try {
-      const { Blob: Blob3 } = require("buffer");
-      if (Blob3 && !Blob3.prototype.stream) {
-        Blob3.prototype.stream = function name(params) {
+      const { Blob: Blob4 } = require("buffer");
+      if (Blob4 && !Blob4.prototype.stream) {
+        Blob4.prototype.stream = function name(params) {
           let position = 0;
           const blob = this;
           return new ReadableStream({
@@ -23902,12 +35816,12 @@ async function* toIterator(parts, clone2 = true) {
     }
   }
 }
-var import_streams, POOL_SIZE, _Blob, Blob2, fetch_blob_default;
+var import_streams, POOL_SIZE, _Blob, Blob3, fetch_blob_default;
 var init_fetch_blob = __esm({
   "node_modules/fetch-blob/index.js"() {
     import_streams = __toESM(require_streams(), 1);
     POOL_SIZE = 65536;
-    _Blob = class Blob {
+    _Blob = class Blob2 {
       #parts = [];
       #type = "";
       #size = 0;
@@ -23931,7 +35845,7 @@ var init_fetch_blob = __esm({
             part = new Uint8Array(element.buffer.slice(element.byteOffset, element.byteOffset + element.byteLength));
           } else if (element instanceof ArrayBuffer) {
             part = new Uint8Array(element.slice(0));
-          } else if (element instanceof Blob) {
+          } else if (element instanceof Blob2) {
             part = element;
           } else {
             part = encoder.encode(`${element}`);
@@ -24013,7 +35927,7 @@ var init_fetch_blob = __esm({
             relativeStart = 0;
           }
         }
-        const blob = new Blob([], { type: String(type).toLowerCase() });
+        const blob = new Blob2([], { type: String(type).toLowerCase() });
         blob.#size = span;
         blob.#parts = blobParts;
         return blob;
@@ -24030,8 +35944,8 @@ var init_fetch_blob = __esm({
       type: { enumerable: true },
       slice: { enumerable: true }
     });
-    Blob2 = _Blob;
-    fetch_blob_default = Blob2;
+    Blob3 = _Blob;
+    fetch_blob_default = Blob3;
   }
 });
 
@@ -24683,7 +36597,7 @@ var writeCache = async (feedTitle, rssFeed, cacheDir, filtered, cached) => {
 // src/lib/getfeed.ts
 var import_core2 = __toESM(require_core(), 1);
 var import_dayjs = __toESM(require_dayjs_min(), 1);
-var import_rss_to_json = __toESM(require_dist(), 1);
+var import_rss_to_json = __toESM(require_dist2(), 1);
 var getFeed = async (rssFeed, cacheDir, interval, title_filter_include, title_filter_exclude) => {
   var _a;
   import_core2.default.debug(`Retrieving ${rssFeed}\u2026`);
@@ -24769,7 +36683,7 @@ var UPGRADE = Symbol("upgrade");
 var VALUE = Symbol("value");
 
 // node_modules/linkedom/esm/shared/parse-from-string.js
-var HTMLParser2 = __toESM(require_lib7(), 1);
+var HTMLParser2 = __toESM(require_lib8(), 1);
 
 // node_modules/linkedom/esm/shared/constants.js
 var NODE_END = -1;
@@ -25775,7 +37689,7 @@ var Comment = class extends CharacterData {
 };
 
 // node_modules/linkedom/esm/shared/matches.js
-var CSSselect = __toESM(require_lib10(), 1);
+var CSSselect = __toESM(require_lib11(), 1);
 var { isArray } = Array;
 var isTag = ({ nodeType }) => nodeType === ELEMENT_NODE;
 var existsOne = (test, elements) => elements.some((element) => isTag(element) && (test(element) || existsOne(test, getChildren(element))));
@@ -27639,7 +39553,7 @@ var HTMLBodyElement = class extends HTMLElement {
 };
 
 // node_modules/linkedom/esm/html/style-element.js
-var import_cssom = __toESM(require_lib11(), 1);
+var import_cssom = __toESM(require_lib12(), 1);
 var tagName3 = "style";
 var HTMLStyleElement = class extends TextElement {
   constructor(ownerDocument, localName = tagName3) {
@@ -29052,6 +40966,11 @@ var isDomainOrSubdomain = (destination, original) => {
   const dest = new URL(destination).hostname;
   return orig === dest || orig.endsWith(`.${dest}`);
 };
+var isSameProtocol = (destination, original) => {
+  const orig = new URL(original).protocol;
+  const dest = new URL(destination).protocol;
+  return orig === dest;
+};
 
 // node_modules/node-fetch/src/body.js
 var pipeline = (0, import_node_util.promisify)(import_node_stream.default.pipeline);
@@ -29504,6 +41423,19 @@ var Response = class extends Body {
     response[INTERNALS2].type = "error";
     return response;
   }
+  static json(data = void 0, init = {}) {
+    const body = JSON.stringify(data);
+    if (body === void 0) {
+      throw new TypeError("data is not JSON serializable");
+    }
+    const headers = new Headers(init && init.headers);
+    if (!headers.has("content-type")) {
+      headers.set("content-type", "application/json");
+    }
+    return new Response(body, __spreadProps(__spreadValues({}, init), {
+      headers
+    }));
+  }
   get [Symbol.toStringTag]() {
     return "Response";
   }
@@ -29582,7 +41514,7 @@ function isOriginPotentiallyTrustworthy(url) {
   if (hostIPVersion === 6 && /^(((0+:){7})|(::(0+:){0,6}))0*1$/.test(hostIp)) {
     return true;
   }
-  if (/^(.+\.)*localhost$/.test(url.host)) {
+  if (url.host === "localhost" || url.host.endsWith(".localhost")) {
     return false;
   }
   if (url.protocol === "file:") {
@@ -29693,8 +41625,10 @@ var Request = class extends Body {
       throw new TypeError(`${parsedURL} is an url with embedded credentials.`);
     }
     let method = init.method || input.method || "GET";
-    method = method.toUpperCase();
-    if ("data" in init) {
+    if (/^(delete|get|head|options|post|put)$/i.test(method)) {
+      method = method.toUpperCase();
+    }
+    if (!isRequest(init) && "data" in init) {
       doBadDataWarn();
     }
     if ((init.body != null || isRequest(input) && input.body !== null) && (method === "GET" || method === "HEAD")) {
@@ -29827,7 +41761,7 @@ var getNodeRequestOptions = (request) => {
     headers.set("User-Agent", "node-fetch");
   }
   if (request.compress && !headers.has("Accept-Encoding")) {
-    headers.set("Accept-Encoding", "gzip,deflate,br");
+    headers.set("Accept-Encoding", "gzip, deflate, br");
   }
   let { agent } = request;
   if (typeof agent === "function") {
@@ -29911,7 +41845,9 @@ async function fetch(url, options_) {
       finalize();
     });
     fixResponseChunkedTransferBadEnding(request_, (error) => {
-      response.body.destroy(error);
+      if (response && response.body) {
+        response.body.destroy(error);
+      }
     });
     if (process.version < "v14") {
       request_.on("socket", (s2) => {
@@ -29972,7 +41908,7 @@ async function fetch(url, options_) {
               referrer: request.referrer,
               referrerPolicy: request.referrerPolicy
             };
-            if (!isDomainOrSubdomain(request.url, locationURL)) {
+            if (!isDomainOrSubdomain(request.url, locationURL) || !isSameProtocol(request.url, locationURL)) {
               for (const name of ["authorization", "www-authenticate", "cookie", "cookie2"]) {
                 requestOptions.headers.delete(name);
               }
@@ -30105,16 +42041,18 @@ function fixResponseChunkedTransferBadEnding(request, errorCallback) {
         errorCallback(error);
       }
     };
-    socket.prependListener("close", onSocketClose);
-    request.on("abort", () => {
-      socket.removeListener("close", onSocketClose);
-    });
-    socket.on("data", (buf) => {
+    const onData = (buf) => {
       properLastChunkReceived = import_node_buffer2.Buffer.compare(buf.slice(-5), LAST_CHUNK) === 0;
       if (!properLastChunkReceived && previousChunk) {
         properLastChunkReceived = import_node_buffer2.Buffer.compare(previousChunk.slice(-3), LAST_CHUNK.slice(0, 3)) === 0 && import_node_buffer2.Buffer.compare(buf.slice(-2), LAST_CHUNK.slice(3)) === 0;
       }
       previousChunk = buf;
+    };
+    socket.prependListener("close", onSocketClose);
+    socket.on("data", onData);
+    request.on("close", () => {
+      socket.removeListener("close", onSocketClose);
+      socket.removeListener("data", onData);
     });
   });
 }
@@ -30311,6 +42249,18 @@ var run = async () => {
 (async () => {
   await run();
 })();
+/*!
+ * mime-db
+ * Copyright(c) 2014 Jonathan Ong
+ * Copyright(c) 2015-2022 Douglas Christopher Wilson
+ * MIT Licensed
+ */
+/*!
+ * mime-types
+ * Copyright(c) 2014 Jonathan Ong
+ * Copyright(c) 2015 Douglas Christopher Wilson
+ * MIT Licensed
+ */
 /*! fetch-blob. MIT License. Jimmy Wärting <https://jimmy.warting.se/opensource> */
 /*! formdata-polyfill. MIT License. Jimmy Wärting <https://jimmy.warting.se/opensource> */
 /*! https://mths.be/he v1.2.0 by @mathias | MIT license */
